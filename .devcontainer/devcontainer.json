@@ -1,0 +1,21 @@
+{
+  "name": "TrustChain",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "NomicFoundation.hardhat-solidity",
+        "Vue.volar",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "solidity.packageDefaultDependenciesContractsDirectory": "src",
+        "solidity.packageDefaultDependenciesDirectory": "lib",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "forwardPorts": [8545, 5173]
+}
