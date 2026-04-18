@@ -25,15 +25,14 @@ immutable event, enabling full traceability, fraud prevention, and regulatory ov
 trust-chain/
 ├── contracts/                    # self-contained Foundry project
 │   ├── src/
-│   │   ├── interfaces/
-│   │   │   └── ITrustChain.sol   # function signatures + events
 │   │   ├── DataTypes.sol         # enums + structs (no logic)
+│   │   ├── ITrustChain.sol       # interface — function signatures + events + errors
 │   │   └── TrustChain.sol        # single main contract
 │   ├── test/
 │   │   └── TrustChain.t.sol      # Forge test suite
 │   ├── script/
 │   │   └── Deploy.s.sol          # Anvil deployment script
-│   ├── lib/                      # forge dependencies
+│   ├── lib/                      # forge dependencies (forge-std)
 │   ├── out/                      # compiled artifacts (gitignored)
 │   └── foundry.toml
 ├── ui/                           # Vue 3 frontend
@@ -47,7 +46,7 @@ trust-chain/
 │   ├── vite.config.js
 │   └── package.json
 ├── docs/                         # this folder
-└── .devcontainer/                # VS Code dev container (Foundry + Node 20)
+└── .devcontainer/                # VS Code dev container (Foundry + Node 24)
 ```
 
 **Design decision:** `foundry.toml` lives inside `contracts/` — that directory is a fully
