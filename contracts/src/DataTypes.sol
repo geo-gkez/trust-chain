@@ -46,7 +46,7 @@ struct User {
 struct Batch {
     // Slot 0 — 32 bytes
     uint256 id;
-    // Slot 1 — 32 bytes (perfectly packed)
+    // Slot 1 — 32 bytes
     uint128 quantity;
     uint48 creationDate;
     uint48 expiryDate;
