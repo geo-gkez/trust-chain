@@ -81,12 +81,19 @@ The deployer of the contract automatically becomes the first `ADMIN`.
 
 ```solidity
 struct User {
+    // Slot 0 — 28 bytes used
     address ethAddress;
     Role    role;
     bool    isActive;
     uint48  registeredAt;
+
+    // Slot 1 — 32 bytes
+    bytes32 name;         // short identifier (e.g. "Athens Producer")
 }
 ```
+
+The `name` field stores a short identifier (not PII) — satisfies the assignment's user struct
+requirement while keeping the on-chain footprint minimal (2 storage slots per user).
 
 Deactivated users (`isActive = false`) are locked out of all state-changing functions.
 
@@ -107,6 +114,13 @@ mapping(string => uint8)    public unitIds;
 ```
 
 Batches store `uint8 productTypeId` and `uint8 unitId` — 1 byte each, same gas cost as an enum.
+
+**Batch ID counter:**
+```solidity
+uint256 public nextBatchId = 1;  // starts at 1 — 0 means "not found" in serialToBatchId
+```
+Starting at 1 prevents confusion: `serialToBatchId[nonExistentSerial]` returns 0 (mapping
+default), which is safely distinguishable from any real batch ID.
 
 **Pre-seeded product types:** FOOD, PHARMA, INDUSTRIAL, ELECTRONICS, AGRICULTURE, CHEMICAL, TEXTILE  
 **Pre-seeded units:** KG, G, TON, L, ML, PCS, M2
@@ -251,7 +265,7 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 
 | Function | Access | Description |
 |---|---|---|
-| `registerUser(address, Role)` | onlyAdmin | Register new user with role |
+| `registerUser(address, bytes32 name, Role)` | onlyAdmin | Register new user with role |
 | `deactivateUser(address)` | onlyAdmin | Lock user out (isActive=false) |
 | `activateUser(address)` | onlyAdmin | Re-enable user |
 | `addProductType(string)` | onlyAdmin | Add to product type registry |
@@ -270,7 +284,7 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 | Function | Access | Transition |
 |---|---|---|
 | `receiveBatch(serial, location)` | onlyWarehouse | PRODUCED/IN_TRANSIT/RECALLED → STORED |
-| `shipBatch(serial, location)` | onlyTransporter | STORED → IN_TRANSIT |
+| `shipBatch(serial, location)` | onlyTransporter | PRODUCED/STORED → IN_TRANSIT |
 | `distributeBatch(serial, location)` | onlyDistributor | STORED/IN_TRANSIT → DISTRIBUTED (blocked if recalled) |
 | `recallBatch(serial, location)` | onlyAuditor | DISTRIBUTED → RECALLED, sets recalled=true |
 | `certifyBatch(serial)` | onlyAuditor | Sets certified=true |
@@ -323,8 +337,14 @@ error BatchNotRecalled();
 ```solidity
 event UserRegistered(
     address indexed user,
+    bytes32         name,
     Role            role
 );
+
+event UserDeactivated(address indexed user);
+event UserActivated(address indexed user);
+event ProductTypeAdded(uint8 indexed id, string name);
+event UnitAdded(uint8 indexed id, string name);
 
 event BatchCreated(
     uint256 indexed batchId,
@@ -353,8 +373,9 @@ event BatchRecalled(
 ```
 
 `BatchTransitioned` is the single event covering all lifecycle moves. The frontend
-reconstructs the complete route by querying all `BatchTransitioned` events for a given
-`batchId` — each event is a hop in the journey with location, actor, and timestamp.
+reconstructs the complete route by querying `BatchCreated` (first timeline entry) plus all
+`BatchTransitioned` events for a given `batchId` — each event is a hop in the journey
+with location, actor, and timestamp.
 
 ---
 
@@ -415,11 +436,11 @@ Exports `role`, `roleLabel`, `isLoading`, `fetchRole()`.
 - `receiveBatch(serial, location)` / `shipBatch` / `distributeBatch` / `recallBatch` / `certifyBatch` / `disposeBatch`
 - `fetchBatch(id)` — reads Batch struct
 - `fetchBatchBySerial(serial)` — reverse lookup
-- `fetchBatchTimeline(batchId)` — queries all `BatchTransitioned` events for a batch
+- `fetchBatchTimeline(batchId)` — queries `BatchCreated` + all `BatchTransitioned` events for full timeline
 - `fetchMyBatches()` — role-filtered event queries (e.g. PRODUCER queries BatchCreated where producer==me)
 
 **`useAdmin.js`** — admin + registry interactions:
-- `registerUser(address, role)` / `deactivateUser` / `activateUser`
+- `registerUser(address, name, role)` / `deactivateUser` / `activateUser`
 - `addProductType(name)` / `addUnit(name)`
 - `getProductTypes()` / `getUnits()`
 
@@ -455,13 +476,16 @@ actions: connect(), disconnect()
 - These checks are in addition to the transition matrix
 
 ### Audit Trail
-- All critical actions emit events — tamper-proof, immutable
+- All critical actions emit events — UserRegistered, UserDeactivated, UserActivated,
+  ProductTypeAdded, UnitAdded, BatchCreated, BatchTransitioned, BatchCertified, BatchRecalled
+- Events are tamper-proof, immutable
 - Events cannot be deleted or modified after emission
 - Full batch route history reconstructable from events alone
 
-### No Personal Data On-chain
-- User struct stores only `address`, `role`, `isActive`, `registeredAt`
-- No names, emails, or personal identifiers on-chain
+### Minimal Personal Data On-chain
+- User struct stores `address`, `role`, `isActive`, `registeredAt`, `name` (bytes32)
+- `name` is a short operational identifier (e.g. "Athens Producer"), not PII
+- No emails, phone numbers, or personal identifiers on-chain
 
 ### Security Audit Tools
 Run after implementation from `contracts/`:

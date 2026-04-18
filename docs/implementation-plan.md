@@ -2,69 +2,84 @@
 
 ## Phase 1 — Project Scaffolding
 
-1. Init Foundry project inside `contracts/` (`forge init --no-git`)
-2. Configure `contracts/foundry.toml` — solc 0.8.28, optimizer 200 runs
-3. Scaffold `ui/` with Vite + Vue 3 + Vuetify 4 + Pinia + ethers.js v6
-4. Configure `.devcontainer/devcontainer.json` — Foundry + Node 20
+1. Configure `.devcontainer/devcontainer.json` — Foundry + Node 20
+2. Init Foundry project inside `contracts/` (`forge init --no-git`)
+3. Configure `contracts/foundry.toml` — solc 0.8.28, optimizer 200 runs
+4. Scaffold `ui/` with Vite + Vue 3 + Vuetify 4 + Pinia + ethers.js v6
 5. Configure `ui/vite.config.js` — `@trustchain-abi` alias pointing to `../contracts/out/TrustChain.sol/TrustChain.json`
 
 ---
 
-## Phase 2 — Smart Contract
+## Phase 2 — Smart Contract (TDD — tests first per domain)
+
+**Approach:** Write DataTypes + interface + contract skeleton first (compilation target),
+then for each domain: write failing tests → implement → green.
 
 6. Write `contracts/src/DataTypes.sol` — all enums and structs
 7. Write `contracts/src/interfaces/ITrustChain.sol` — function signatures + events
-8. Write `contracts/src/TrustChain.sol`:
+8. Write `contracts/src/TrustChain.sol` skeleton:
    - State variables + constructor (seeds registries + transition matrix + deployer as ADMIN)
-   - Modifiers + custom errors
-   - User domain: `registerUser`, `deactivateUser`, `activateUser`
-   - Registry domain: `addProductType`, `addUnit`, getters
-   - Batch domain: `createBatch`, view functions
-   - Lifecycle domain: `receiveBatch`, `shipBatch`, `distributeBatch`, `recallBatch`, `certifyBatch`, `disposeBatch`
-9. Write `contracts/script/Deploy.s.sol`
+   - Custom errors
+   - Modifiers + `_requireRole` internal
+   - Empty function stubs (revert or no-op) — enough to compile
+
+9. **User domain (TDD cycle):**
+   a. Write tests: register, deactivate, activate, unauthorized access, zero address, duplicate
+   b. Implement: `registerUser`, `deactivateUser`, `activateUser`, `getUser`
+   c. `forge test` — green
+
+10. **Registry domain (TDD cycle):**
+    a. Write tests: addProductType, addUnit, duplicate name, getters
+    b. Implement: `addProductType`, `addUnit`, `getProductTypes`, `getUnits`
+    c. `forge test` — green
+
+11. **Batch domain (TDD cycle):**
+    a. Write tests: createBatch, duplicate serial, wrong role, getBatch, getBatchBySerial
+    b. Implement: `createBatch`, `getBatch`, `getBatchBySerial`
+    c. `forge test` — green
+
+12. **Lifecycle domain (TDD cycle):**
+    a. Write tests: each valid transition, each invalid transition, role checks
+    b. Implement: `receiveBatch`, `shipBatch`, `distributeBatch`
+    c. `forge test` — green
+
+13. **Recall + certification domain (TDD cycle):**
+    a. Write tests: recall, blocked re-distribution, dispose, certify, unauthorized certify
+    b. Implement: `recallBatch`, `certifyBatch`, `disposeBatch`
+    c. `forge test` — all green
+
+14. Write `contracts/script/Deploy.s.sol`
 
 ---
 
-## Phase 3 — Contract Tests
+## Phase 3 — Frontend Core
 
-10. Write `contracts/test/TrustChain.t.sol`:
-    - User domain: register, deactivate, activate, unauthorized access
-    - Batch domain: create, duplicate serial, wrong role
-    - Lifecycle: each valid transition, each invalid transition
-    - Recall: recall, blocked re-distribution, dispose
-    - Certification: certify, unauthorized certify
-11. Run `forge test` — all green
+15. `stores/wallet.js` — MetaMask connect/disconnect, chain switching to Anvil
+16. `composables/useUserRole.js` — fetch role on account change
+17. `router/index.js` — 4 routes + navigation guard
+18. `App.vue` — navbar with role badge + wallet status
 
 ---
 
-## Phase 4 — Frontend Core
+## Phase 4 — Frontend Views + Components
 
-12. `stores/wallet.js` — MetaMask connect/disconnect, chain switching to Anvil
-13. `composables/useUserRole.js` — fetch role on account change
-14. `router/index.js` — 4 routes + navigation guard
-15. `App.vue` — navbar with role badge + wallet status
-
----
-
-## Phase 5 — Frontend Views + Components
-
-16. `views/HomeView.vue` — landing + wallet connect
-17. `components/common/WalletConnect.vue` + `RoleBadge.vue`
-18. `composables/useBatches.js` + `useAdmin.js`
-19. `components/batch/BatchCard.vue` + `BatchForm.vue`
-20. `views/DashboardView.vue` — role-aware quick actions + batch list
-21. `components/batch/BatchTimeline.vue` — event-driven route history
-22. `views/BatchDetailView.vue` — full batch data + timeline
-23. `views/SearchView.vue` — search by serial or ID
-24. `components/admin/UserForm.vue` — register user form inside DashboardView
+19. `views/HomeView.vue` — landing + wallet connect
+20. `components/common/WalletConnect.vue` + `RoleBadge.vue`
+21. `composables/useBatches.js` + `useAdmin.js`
+22. `components/batch/BatchCard.vue` + `BatchForm.vue`
+23. `views/DashboardView.vue` — role-aware quick actions + batch list
+24. `components/batch/BatchTimeline.vue` — event-driven route history
+25. `views/BatchDetailView.vue` — full batch data + timeline
+26. `views/SearchView.vue` — search by serial or ID
+27. `components/admin/UserForm.vue` — register user form inside DashboardView
 
 ---
 
-## Phase 6 — Demo Data + Security Audit
+## Phase 5 — Demo Data + Security Audit
 
-25. Deploy to Anvil, register all 6 roles, register 10+ batches
-26. Execute 2 complete end-to-end workflows (see design-spec.md §11)
-27. Run Slither + Solhint, document findings in PDF
+28. Deploy to Anvil, register all 6 roles, register 10+ batches
+29. Execute 2 complete end-to-end workflows (see design-spec.md §11)
+30. Run Slither + Solhint, document findings in PDF
 
 ---
 
