@@ -31,11 +31,20 @@ interface ITrustChain {
     error Unauthorized();
     error BatchNotFound();
     error DuplicateSerial();
+    error InvalidSerialNumber();
     error InvalidProductType();
     error InvalidUnit();
+    error InvalidQuantity();
+    error InvalidOrigin();
+    error InvalidExpiryDate();
     error InvalidTransition(Status from, Status to);
     error CannotDistributeRecalled();
     error BatchNotRecalled();
+    error SelfDeactivation();
+    error CannotCertifyInStatus(Status status);
+    error AlreadyCertified();
+    error DuplicateProductType();
+    error DuplicateUnit();
 
     // ── Admin Domain ────────────────────────────────────────────────────
 

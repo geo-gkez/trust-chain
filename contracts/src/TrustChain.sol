@@ -85,13 +85,14 @@ contract TrustChain is ITrustChain {
         allowedTransitions[Status.RECALLED][Status.STORED] = true;
     }
 
-    // ── Admin Domain (stubs) ────────────────────────────────────────────
+    // ── Admin Domain ──────────────────────────────────────────────────────
 
     function registerUser(address user, bytes32 name, Role role) external onlyAdmin {
         _registerUser(user, name, role);
     }
 
     function deactivateUser(address user) external onlyAdmin {
+        if (user == msg.sender) revert SelfDeactivation();
         _requireRegistered(user).isActive = false;
         emit UserDeactivated(user);
     }
@@ -109,7 +110,7 @@ contract TrustChain is ITrustChain {
         _addUnit(name);
     }
 
-    // ── Batch Domain (stubs) ────────────────────────────────────────────
+    // ── Batch Domain ──────────────────────────────────────────────────────
 
     function createBatch(
         bytes32 serialNumber,
@@ -122,7 +123,13 @@ contract TrustChain is ITrustChain {
     ) external onlyProducer {
         if (productTypeId >= productTypeCount) revert InvalidProductType();
         if (unitId >= unitCount) revert InvalidUnit();
-        if (batches[serialNumber].serialNumber != bytes32(0)) revert DuplicateSerial();
+        if (serialNumber == bytes32(0)) revert InvalidSerialNumber();
+        if (quantity == 0) revert InvalidQuantity();
+        if (origin == bytes32(0)) revert InvalidOrigin();
+        if (expiryDate != 0 && expiryDate < block.timestamp) revert InvalidExpiryDate();
+        if (batches[serialNumber].serialNumber != bytes32(0)) {
+            revert DuplicateSerial();
+        }
 
         batches[serialNumber] = Batch({
             quantity: quantity,
@@ -143,21 +150,46 @@ contract TrustChain is ITrustChain {
         emit BatchCreated(serialNumber, msg.sender);
     }
 
-    // ── Lifecycle Domain (stubs) ────────────────────────────────────────
+    // ── Lifecycle Domain ────────────────────────────────────────────────
 
-    function receiveBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {}
+    function receiveBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
+        _transition(serialNumber, Status.STORED, location);
+    }
 
-    function shipBatch(bytes32 serialNumber, bytes32 location) external onlyTransporter {}
+    function shipBatch(bytes32 serialNumber, bytes32 location) external onlyTransporter {
+        _transition(serialNumber, Status.IN_TRANSIT, location);
+    }
 
-    function distributeBatch(bytes32 serialNumber, bytes32 location) external onlyDistributor {}
+    function distributeBatch(bytes32 serialNumber, bytes32 location) external onlyDistributor {
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.recalled) revert CannotDistributeRecalled();
+        _transition(b, serialNumber, Status.DISTRIBUTED, location);
+    }
 
-    function recallBatch(bytes32 serialNumber, bytes32 location) external onlyAuditor {}
+    function recallBatch(bytes32 serialNumber, bytes32 location) external onlyAuditor {
+        Batch storage b = _requireBatch(serialNumber);
+        _transition(b, serialNumber, Status.RECALLED, location);
+        b.recalled = true;
+        emit BatchRecalled(serialNumber, msg.sender);
+    }
 
-    function certifyBatch(bytes32 serialNumber) external onlyAuditor {}
+    function certifyBatch(bytes32 serialNumber) external onlyAuditor {
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.status == Status.RECALLED || b.status == Status.DISPOSED) {
+            revert CannotCertifyInStatus(b.status);
+        }
+        if (b.certified) revert AlreadyCertified();
+        b.certified = true;
+        emit BatchCertified(serialNumber, msg.sender);
+    }
 
-    function disposeBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {}
+    function disposeBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
+        Batch storage b = _requireBatch(serialNumber);
+        if (!b.recalled) revert BatchNotRecalled();
+        _transition(b, serialNumber, Status.DISPOSED, location);
+    }
 
-    // ── View Domain (stubs) ─────────────────────────────────────────────
+    // ── View Domain ───────────────────────────────────────────────────────
 
     function getBatch(bytes32 serialNumber) external view returns (Batch memory) {
         return batches[serialNumber];
@@ -207,14 +239,41 @@ contract TrustChain is ITrustChain {
     }
 
     function _addProductType(string memory name) internal {
+        bytes32 nameHash = keccak256(bytes(name));
+        for (uint8 i = 0; i < productTypeCount; i++) {
+            if (keccak256(bytes(productTypeNames[i])) == nameHash) revert DuplicateProductType();
+        }
         productTypeNames[productTypeCount] = name;
         emit ProductTypeAdded(productTypeCount, name);
         productTypeCount++;
     }
 
     function _addUnit(string memory name) internal {
+        bytes32 nameHash = keccak256(bytes(name));
+        for (uint8 i = 0; i < unitCount; i++) {
+            if (keccak256(bytes(unitNames[i])) == nameHash) revert DuplicateUnit();
+        }
         unitNames[unitCount] = name;
         emit UnitAdded(unitCount, name);
         unitCount++;
+    }
+
+    function _requireBatch(bytes32 serialNumber) internal view returns (Batch storage b) {
+        b = batches[serialNumber];
+        if (b.serialNumber == bytes32(0)) revert BatchNotFound();
+    }
+
+    /// @dev Overload for callers that already hold the storage reference.
+    function _transition(Batch storage b, bytes32 serialNumber, Status to, bytes32 location) internal {
+        Status from = b.status;
+        if (!allowedTransitions[from][to]) revert InvalidTransition(from, to);
+        b.status = to;
+        b.currentHolder = msg.sender;
+        emit BatchTransitioned(serialNumber, from, to, location, msg.sender, uint48(block.timestamp));
+    }
+
+    function _transition(bytes32 serialNumber, Status to, bytes32 location) internal {
+        Batch storage b = _requireBatch(serialNumber);
+        _transition(b, serialNumber, to, location);
     }
 }
