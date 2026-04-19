@@ -287,4 +287,48 @@ contract TrustChainTest is Test {
             0
         );
     }
+
+    function test_createBatch_emitsEvent() public {
+        tc.registerUser(alice, "Alice", Role.PRODUCER);
+
+        // BatchCreated(bytes32 indexed serialNumber, address indexed producer)
+        // Both params are indexed → check topic1 and topic2; no data to check
+        vm.expectEmit(true, true, false, false);
+        emit ITrustChain.BatchCreated("OLIVE-GR-001", alice);
+
+        vm.prank(alice);
+        tc.createBatch("OLIVE-GR-001", 0, Category.PERISHABLE, 0, 1000, "GR-PEL", 0);
+    }
+
+    function test_createBatch_setsInitialStatus() public {
+        tc.registerUser(alice, "Alice", Role.PRODUCER);
+
+        vm.prank(alice);
+        tc.createBatch("OLIVE-GR-001", 0, Category.PERISHABLE, 0, 1000, "GR-PEL", 0);
+
+        Batch memory b = tc.getBatch("OLIVE-GR-001");
+        assertEq(uint8(b.status), uint8(Status.PRODUCED));
+        assertEq(b.currentHolder, alice);
+        assertFalse(b.recalled);
+        assertFalse(b.certified);
+    }
+
+    function test_createBatch_revertsWhenDuplicateSerial() public {
+        tc.registerUser(alice, "Alice", Role.PRODUCER);
+
+        vm.prank(alice);
+        tc.createBatch("OLIVE-GR-001", 0, Category.PERISHABLE, 0, 1000, "GR-PEL", 0);
+
+        // Second call with the same serial should revert
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.DuplicateSerial.selector);
+        tc.createBatch("OLIVE-GR-001", 1, Category.NON_PERISHABLE, 1, 500, "GR-ATH", 0);
+    }
+
+    function test_createBatch_revertsWhenNotProducer() public {
+        // alice is not registered — onlyProducer modifier rejects her
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.Unauthorized.selector);
+        tc.createBatch("OLIVE-GR-001", 0, Category.PERISHABLE, 0, 1000, "GR-PEL", 0);
+    }
 }
