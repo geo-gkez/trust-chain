@@ -2,8 +2,8 @@
 
 ## Phase 1 — Project Scaffolding
 
-1. Configure `.devcontainer/devcontainer.json` — Foundry + Node 20
-2. Init Foundry project inside `contracts/` (`forge init --no-git`)
+1. Configure `.devcontainer/devcontainer.json` — Foundry + Node 24 LTS
+2. Init Foundry project inside `contracts/` (`forge init --no-git`); add `forge-std` as a git submodule at the repo root so `git clone --recurse-submodules` works for everyone
 3. Configure `contracts/foundry.toml` — solc 0.8.28, optimizer 200 runs
 4. Scaffold `ui/` with Vite + Vue 3 + Vuetify 4 + Pinia + ethers.js v6
 5. Configure `ui/vite.config.js` — `@trustchain-abi` alias pointing to `../contracts/out/TrustChain.sol/TrustChain.json`
@@ -16,7 +16,7 @@
 then for each domain: write failing tests → implement → green.
 
 6. Write `contracts/src/DataTypes.sol` — all enums and structs
-7. Write `contracts/src/interfaces/ITrustChain.sol` — function signatures + events
+7. Write `contracts/src/ITrustChain.sol` — function signatures + events + custom errors
 8. Write `contracts/src/TrustChain.sol` skeleton:
    - State variables + constructor (seeds registries + transition matrix + deployer as ADMIN)
    - Custom errors
@@ -24,18 +24,18 @@ then for each domain: write failing tests → implement → green.
    - Empty function stubs (revert or no-op) — enough to compile
 
 9. **User domain (TDD cycle):**
-   a. Write tests: register, deactivate, activate, unauthorized access, zero address, duplicate
+   a. Write tests: register, deactivate, activate, unauthorized access, zero address, duplicate, deactivated user blocked
    b. Implement: `registerUser`, `deactivateUser`, `activateUser`, `getUser`
    c. `forge test` — green
 
 10. **Registry domain (TDD cycle):**
-    a. Write tests: addProductType, addUnit, duplicate name, getters
-    b. Implement: `addProductType`, `addUnit`, `getProductTypes`, `getUnits`
+    a. Write tests: addProductType appends + emits + unauthorized revert; same 3 for addUnit; getter coverage in constructor tests
+    b. Implement: `addProductType` → `_addProductType`, `addUnit` → `_addUnit`
     c. `forge test` — green
 
 11. **Batch domain (TDD cycle):**
-    a. Write tests: createBatch, duplicate serial, wrong role, getBatch, getBatchBySerial
-    b. Implement: `createBatch`, `getBatch`, `getBatchBySerial`
+    a. Write tests: createBatch happy path + emits, duplicate serial reverts, wrong role reverts, getBatch by serial
+    b. Implement: `createBatch`, `getBatch(bytes32 serialNumber)`
     c. `forge test` — green
 
 12. **Lifecycle domain (TDD cycle):**
@@ -106,5 +106,5 @@ Manual demo checklist:
 - Complete Workflow 1 (olive oil — full forward chain)
 - Complete Workflow 2 (pharma — recall + reverse logistics)
 - Verify `BatchDetailView` shows full route timeline for both workflows
-- Verify `SearchView` finds batches by serial and by ID
+- Verify `SearchView` finds batches by serial number
 - Verify AUDITOR sees all batches; PRODUCER sees only their own

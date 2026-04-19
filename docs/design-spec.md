@@ -104,36 +104,32 @@ This allows new categories to be added without redeploying the contract.
 **Pattern (identical for both):**
 ```solidity
 uint8                       public productTypeCount;
-mapping(uint8  => string)   public productTypeNames;   // id → "FOOD"
-mapping(string => uint8)    public productTypeIds;     // "FOOD" → id
+mapping(uint8 => string)    public productTypeNames;   // id → "FOOD"
 
 uint8                       public unitCount;
-mapping(uint8  => string)   public unitNames;
-mapping(string => uint8)    public unitIds;
+mapping(uint8 => string)    public unitNames;          // id → "KG"
 ```
 
 Batches store `uint8 productTypeId` and `uint8 unitId` — 1 byte each, same gas cost as an enum.
 
-**Batch ID counter:**
-```solidity
-uint256 public nextBatchId = 1;  // starts at 1 — 0 means "not found" in serialToBatchId
-```
-Starting at 1 prevents confusion: `serialToBatchId[nonExistentSerial]` returns 0 (mapping
-default), which is safely distinguishable from any real batch ID.
+**One-way mapping by design.** Earlier drafts included reverse lookups (`productTypeIds: name → id`),
+but those maps were never read on-chain. The frontend gets the name↔id mapping implicitly from
+the array returned by `getProductTypes()` — array index *is* the id. Removing the reverse
+mapping saves one SSTORE per add (~20k gas) and simplifies the UI (one contract call instead
+of two per form submit).
 
 **Pre-seeded product types:** FOOD, PHARMA, INDUSTRIAL, ELECTRONICS, AGRICULTURE, CHEMICAL, TEXTILE  
 **Pre-seeded units:** KG, G, TON, L, ML, PCS, M2
 
 ### 4.3 Batch Struct
 
-Storage-optimised for minimum SLOAD/SSTORE operations. 6 storage slots total.
+Storage-optimised for minimum SLOAD/SSTORE operations. 5 storage slots total.
+`serialNumber` is the canonical key — the `batches` mapping is keyed by `bytes32`,
+not by an internal counter. No separate `uint256 id` field.
 
 ```solidity
 struct Batch {
-    // Slot 0 — 32 bytes
-    uint256  id;                  // auto-increment
-
-    // Slot 1 — 32 bytes exactly (perfectly packed)
+    // Slot 0 — 32 bytes exactly (perfectly packed)
     uint128  quantity;            // 16 bytes
     uint48   creationDate;        //  6 bytes — unix timestamp
     uint48   expiryDate;          //  6 bytes — 0 = no expiry
@@ -142,24 +138,30 @@ struct Batch {
     Status   status;              //  1 byte  — lifecycle state
     bool     recalled;            //  1 byte  — permanent, never unset
 
-    // Slot 2 — 22 bytes used
+    // Slot 1 — 22 bytes used
     address  producer;            // 20 bytes — immutable after creation
     uint8    unitId;              //  1 byte  — dynamic registry index
     bool     certified;           //  1 byte  — set by AUDITOR
 
-    // Slot 3 — 20 bytes used
+    // Slot 2 — 20 bytes used
     address  currentHolder;       // 20 bytes — updated on every transition
 
-    // Slot 4 — 32 bytes
+    // Slot 3 — 32 bytes
     bytes32  origin;              // production region (e.g. "GR-PEL")
 
-    // Slot 5 — 32 bytes
-    bytes32  serialNumber;        // human-readable ID (e.g. "OLIVE-GR-001")
+    // Slot 4 — 32 bytes
+    bytes32  serialNumber;        // canonical key (e.g. "OLIVE-GR-001")
 }
 ```
 
-**Slot 1 packing rationale:** `recalled` lives in the same slot as `status` — both are read
+**Slot 0 packing rationale:** `recalled` lives in the same slot as `status` — both are read
 on every transition check, so they share a single SLOAD.
+
+**Single-key design rationale:** Earlier drafts had both a `uint256 id` (auto-increment) and
+a `bytes32 serialNumber`, with a `serialToBatchId` mapping bridging them. In practice we never
+use the numeric id for anything (no ordering logic, no range queries), so it's pure ceremony.
+Keying `batches` directly by `serialNumber` removes the bridge mapping, the counter, and one
+struct field — net savings: one SSTORE per batch creation plus a cleaner event surface.
 
 **Location is NOT in the struct.** Transit locations are captured only in `BatchTransitioned`
 events. This avoids an extra SSTORE on every transition (~5,000 gas saved per hop) while
@@ -275,8 +277,7 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 | Function | Access | Description |
 |---|---|---|
 | `createBatch(serial, productTypeId, category, unitId, quantity, origin, expiryDate)` | onlyProducer | Creates batch in PRODUCED state |
-| `getBatch(uint256 id)` | view | Returns full Batch struct |
-| `getBatchBySerial(bytes32)` | view | Lookup by serial number |
+| `getBatch(bytes32 serialNumber)` | view | Returns full Batch struct |
 
 ### Lifecycle Domain
 
@@ -346,13 +347,12 @@ event ProductTypeAdded(uint8 indexed id, string name);
 event UnitAdded(uint8 indexed id, string name);
 
 event BatchCreated(
-    uint256 indexed batchId,
     bytes32 indexed serialNumber,
     address indexed producer
 );
 
 event BatchTransitioned(
-    uint256 indexed batchId,
+    bytes32 indexed serialNumber,
     Status  indexed from,
     Status  indexed to,
     bytes32         location,   // where the transition happened
@@ -361,19 +361,19 @@ event BatchTransitioned(
 );
 
 event BatchCertified(
-    uint256 indexed batchId,
+    bytes32 indexed serialNumber,
     address indexed auditor
 );
 
 event BatchRecalled(
-    uint256 indexed batchId,
+    bytes32 indexed serialNumber,
     address indexed auditor
 );
 ```
 
 `BatchTransitioned` is the single event covering all lifecycle moves. The frontend
 reconstructs the complete route by querying `BatchCreated` (first timeline entry) plus all
-`BatchTransitioned` events for a given `batchId` — each event is a hop in the journey
+`BatchTransitioned` events for a given `serialNumber` — each event is a hop in the journey
 with location, actor, and timestamp.
 
 ---
@@ -386,7 +386,7 @@ with location, actor, and timestamp.
 |---|---|---|
 | `/` | HomeView | public |
 | `/dashboard` | DashboardView | any registered user |
-| `/batch/:id` | BatchDetailView | any registered user |
+| `/batch/:serial` | BatchDetailView | any registered user |
 | `/search` | SearchView | any registered user |
 
 Navigation guard in `router/index.js` calls `contract.getUser(account)` and redirects
@@ -410,7 +410,7 @@ unregistered addresses to `/` with an explanatory message.
 - `BatchTimeline` component: reconstructed from `BatchTransitioned` events,
   each hop shows from→to status, location, actor address, formatted timestamp
 
-**SearchView** — search by serial number (`bytes32`) or numeric ID (`uint256`),
+**SearchView** — search by serial number (`bytes32`),
 displays `BatchCard` component with current status.
 
 ### Component Tree
@@ -433,9 +433,8 @@ Exports `role`, `roleLabel`, `isLoading`, `fetchRole()`.
 **`useBatches.js`** — all batch contract interactions:
 - `createBatch(params)` — calls contract, awaits receipt
 - `receiveBatch(serial, location)` / `shipBatch` / `distributeBatch` / `recallBatch` / `certifyBatch` / `disposeBatch`
-- `fetchBatch(id)` — reads Batch struct
-- `fetchBatchBySerial(serial)` — reverse lookup
-- `fetchBatchTimeline(batchId)` — queries `BatchCreated` + all `BatchTransitioned` events for full timeline
+- `fetchBatch(serial)` — reads Batch struct by serial number
+- `fetchBatchTimeline(serial)` — queries `BatchCreated` + all `BatchTransitioned` events for full timeline
 - `fetchMyBatches()` — role-filtered event queries (e.g. PRODUCER queries BatchCreated where producer==me)
 
 **`useAdmin.js`** — admin + registry interactions:
@@ -565,7 +564,7 @@ MetaMask configuration:
 ## 13. Deliverables Checklist
 
 - [ ] `contracts/src/DataTypes.sol` — enums + structs
-- [ ] `contracts/src/interfaces/ITrustChain.sol` — interface
+- [ ] `contracts/src/ITrustChain.sol` — interface (events + errors + function signatures)
 - [ ] `contracts/src/TrustChain.sol` — main contract with comments
 - [ ] `contracts/test/TrustChain.t.sol` — Forge test suite (all green)
 - [ ] `contracts/script/Deploy.s.sol` — deployment script
