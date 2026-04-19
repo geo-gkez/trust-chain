@@ -200,4 +200,30 @@ contract TrustChainTest is Test {
         vm.expectRevert(ITrustChain.Unauthorized.selector);
         tc.addProductType("DRINKS");
     }
+
+    // ── addUnit ─────────────────────────────────────────────────────────
+
+    function test_addUnit_appendsToRegistry() public {
+        string[] memory before = tc.getUnits();
+
+        tc.addUnit("OZ");
+
+        string[] memory after_ = tc.getUnits();
+        assertEq(after_.length, before.length + 1);
+        assertEq(after_[after_.length - 1], "OZ");
+    }
+
+    function test_addUnit_emitsEvent() public {
+        // Constructor seeds 7 units (ids 0–6), so next id is 7
+        vm.expectEmit(true, false, false, true);
+        emit ITrustChain.UnitAdded(7, "OZ");
+
+        tc.addUnit("OZ");
+    }
+
+    function test_addUnit_revertsWhenCallerNotAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.Unauthorized.selector);
+        tc.addUnit("OZ");
+    }
 }

@@ -105,7 +105,9 @@ contract TrustChain is ITrustChain {
         _addProductType(name);
     }
 
-    function addUnit(string calldata name) external onlyAdmin {}
+    function addUnit(string calldata name) external onlyAdmin {
+        _addUnit(name);
+    }
 
     // ── Batch Domain (stubs) ────────────────────────────────────────────
 
