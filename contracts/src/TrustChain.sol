@@ -11,17 +11,13 @@ contract TrustChain is ITrustChain {
 
     mapping(address => User) public users;
 
-    uint256 public nextBatchId = 1;
-    mapping(uint256 => Batch) public batches;
-    mapping(bytes32 => uint256) public serialToBatchId;
+    mapping(bytes32 => Batch) public batches;
 
     uint8 public productTypeCount;
     mapping(uint8 => string) public productTypeNames;
-    mapping(string => uint8) public productTypeIds;
 
     uint8 public unitCount;
     mapping(uint8 => string) public unitNames;
-    mapping(string => uint8) public unitIds;
 
     mapping(Status => mapping(Status => bool)) public allowedTransitions;
 
@@ -139,12 +135,8 @@ contract TrustChain is ITrustChain {
 
     // ── View Domain (stubs) ─────────────────────────────────────────────
 
-    function getBatch(uint256 id) external view returns (Batch memory) {
-        return batches[id];
-    }
-
-    function getBatchBySerial(bytes32 serialNumber) external view returns (Batch memory) {
-        return batches[serialToBatchId[serialNumber]];
+    function getBatch(bytes32 serialNumber) external view returns (Batch memory) {
+        return batches[serialNumber];
     }
 
     function getUser(address user) external view returns (User memory) {
@@ -192,14 +184,12 @@ contract TrustChain is ITrustChain {
 
     function _addProductType(string memory name) internal {
         productTypeNames[productTypeCount] = name;
-        productTypeIds[name] = productTypeCount;
         emit ProductTypeAdded(productTypeCount, name);
         productTypeCount++;
     }
 
     function _addUnit(string memory name) internal {
         unitNames[unitCount] = name;
-        unitIds[name] = unitCount;
         emit UnitAdded(unitCount, name);
         unitCount++;
     }

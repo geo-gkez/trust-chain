@@ -14,14 +14,14 @@ interface ITrustChain {
     event ProductTypeAdded(uint8 indexed id, string name);
     event UnitAdded(uint8 indexed id, string name);
 
-    event BatchCreated(uint256 indexed batchId, bytes32 indexed serialNumber, address indexed producer);
+    event BatchCreated(bytes32 indexed serialNumber, address indexed producer);
 
     event BatchTransitioned(
-        uint256 indexed batchId, Status indexed from, Status indexed to, bytes32 location, address by, uint48 at
+        bytes32 indexed serialNumber, Status indexed from, Status indexed to, bytes32 location, address by, uint48 at
     );
 
-    event BatchCertified(uint256 indexed batchId, address indexed auditor);
-    event BatchRecalled(uint256 indexed batchId, address indexed auditor);
+    event BatchCertified(bytes32 indexed serialNumber, address indexed auditor);
+    event BatchRecalled(bytes32 indexed serialNumber, address indexed auditor);
 
     // ── Custom Errors ───────────────────────────────────────────────────
 
@@ -66,8 +66,7 @@ interface ITrustChain {
 
     // ── View Domain ─────────────────────────────────────────────────────
 
-    function getBatch(uint256 id) external view returns (Batch memory);
-    function getBatchBySerial(bytes32 serialNumber) external view returns (Batch memory);
+    function getBatch(bytes32 serialNumber) external view returns (Batch memory);
     function getUser(address user) external view returns (User memory);
     function getProductTypes() external view returns (string[] memory);
     function getUnits() external view returns (string[] memory);

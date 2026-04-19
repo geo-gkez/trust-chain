@@ -43,10 +43,9 @@ struct User {
 }
 
 /// @notice Product batch tracked through the supply chain.
+/// @dev Keyed by `serialNumber` in the `batches` mapping — no internal uint256 id.
 struct Batch {
-    // Slot 0 — 32 bytes
-    uint256 id;
-    // Slot 1 — 32 bytes
+    // Slot 0 — 32 bytes (perfectly packed)
     uint128 quantity;
     uint48 creationDate;
     uint48 expiryDate;
@@ -54,14 +53,14 @@ struct Batch {
     Category category;
     Status status;
     bool recalled;
-    // Slot 2 — 22 bytes used
+    // Slot 1 — 22 bytes used
     address producer;
     uint8 unitId;
     bool certified;
-    // Slot 3 — 20 bytes used
+    // Slot 2 — 20 bytes used
     address currentHolder;
-    // Slot 4 — 32 bytes
+    // Slot 3 — 32 bytes
     bytes32 origin;
-    // Slot 5 — 32 bytes
+    // Slot 4 — 32 bytes (canonical key, kept in the struct for returns)
     bytes32 serialNumber;
 }
