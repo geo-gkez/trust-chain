@@ -91,13 +91,23 @@ contract TrustChain is ITrustChain {
 
     // ── Admin Domain (stubs) ────────────────────────────────────────────
 
-    function registerUser(address user, bytes32 name, Role role) external onlyAdmin {}
+    function registerUser(address user, bytes32 name, Role role) external onlyAdmin {
+        _registerUser(user, name, role);
+    }
 
-    function deactivateUser(address user) external onlyAdmin {}
+    function deactivateUser(address user) external onlyAdmin {
+        _requireRegistered(user).isActive = false;
+        emit UserDeactivated(user);
+    }
 
-    function activateUser(address user) external onlyAdmin {}
+    function activateUser(address user) external onlyAdmin {
+        _requireRegistered(user).isActive = true;
+        emit UserActivated(user);
+    }
 
-    function addProductType(string calldata name) external onlyAdmin {}
+    function addProductType(string calldata name) external onlyAdmin {
+        _addProductType(name);
+    }
 
     function addUnit(string calldata name) external onlyAdmin {}
 
@@ -164,7 +174,17 @@ contract TrustChain is ITrustChain {
         if (!u.isActive || u.role != role) revert Unauthorized();
     }
 
+    function _requireRegistered(address account) internal view returns (User storage u) {
+        u = users[account];
+        if (u.ethAddress == address(0)) revert NotRegistered();
+    }
+
+    /// @dev Invariants enforced here apply to every caller (constructor + external registerUser).
+    /// Access control lives on the external function.
     function _registerUser(address account, bytes32 name, Role role) internal {
+        if (account == address(0)) revert ZeroAddress();
+        if (users[account].ethAddress != address(0)) revert AlreadyRegistered();
+
         users[account] =
             User({ethAddress: account, role: role, isActive: true, registeredAt: uint48(block.timestamp), name: name});
         emit UserRegistered(account, name, role);
