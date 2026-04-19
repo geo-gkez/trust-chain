@@ -119,7 +119,29 @@ contract TrustChain is ITrustChain {
         uint128 quantity,
         bytes32 origin,
         uint48 expiryDate
-    ) external onlyProducer {}
+    ) external onlyProducer {
+        if (productTypeId >= productTypeCount) revert InvalidProductType();
+        if (unitId >= unitCount) revert InvalidUnit();
+        if (batches[serialNumber].serialNumber != bytes32(0)) revert DuplicateSerial();
+
+        batches[serialNumber] = Batch({
+            quantity: quantity,
+            creationDate: uint48(block.timestamp),
+            expiryDate: expiryDate,
+            productTypeId: productTypeId,
+            category: category,
+            status: Status.PRODUCED,
+            recalled: false,
+            producer: msg.sender,
+            unitId: unitId,
+            certified: false,
+            currentHolder: msg.sender,
+            origin: origin,
+            serialNumber: serialNumber
+        });
+
+        emit BatchCreated(serialNumber, msg.sender);
+    }
 
     // ── Lifecycle Domain (stubs) ────────────────────────────────────────
 

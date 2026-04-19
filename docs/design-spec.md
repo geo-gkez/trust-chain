@@ -325,10 +325,19 @@ error NotRegistered();
 error Unauthorized();
 error BatchNotFound();
 error DuplicateSerial();
+error InvalidProductType();   // productTypeId >= productTypeCount
+error InvalidUnit();           // unitId >= unitCount
 error InvalidTransition(Status from, Status to);
 error CannotDistributeRecalled();
 error BatchNotRecalled();
 ```
+
+**Trust boundaries and input validation.** The `PRODUCER` role is trusted for *intent*
+(only producers can create batches) but **not** for *input correctness*. A producer could
+bypass the UI and submit a `productTypeId` or `unitId` that doesn't map to any registered
+entry, leaving garbage data on-chain. `createBatch` therefore validates both ids against
+`productTypeCount` / `unitCount` before writing state. Two warm SLOADs, two reverts —
+cheap defence against malformed input.
 
 ---
 

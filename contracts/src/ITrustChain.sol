@@ -31,6 +31,8 @@ interface ITrustChain {
     error Unauthorized();
     error BatchNotFound();
     error DuplicateSerial();
+    error InvalidProductType();
+    error InvalidUnit();
     error InvalidTransition(Status from, Status to);
     error CannotDistributeRecalled();
     error BatchNotRecalled();

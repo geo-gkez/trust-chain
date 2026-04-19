@@ -226,4 +226,65 @@ contract TrustChainTest is Test {
         vm.expectRevert(ITrustChain.Unauthorized.selector);
         tc.addUnit("OZ");
     }
+
+    // ── createBatch ─────────────────────────────────────────────────────
+
+    function test_createBatch_happyPath() public {
+        // 1. Admin registers alice as PRODUCER
+        tc.registerUser(alice, "Alice Producer", Role.PRODUCER);
+
+        // 2. Alice creates a batch (vm.prank so msg.sender = alice on the next call)
+        vm.prank(alice);
+        tc.createBatch(
+            "OLIVE-GR-001", // serialNumber
+            0, // productTypeId — 0 = FOOD (seeded)
+            Category.PERISHABLE,
+            0, // unitId — 0 = KG (seeded)
+            1000, // quantity
+            "GR-PEL", // origin
+            0 // expiryDate — 0 = no expiry
+        );
+
+        // 3. Read back and assert all fields
+        Batch memory b = tc.getBatch("OLIVE-GR-001");
+        assertEq(b.serialNumber, bytes32("OLIVE-GR-001"));
+        assertEq(b.producer, alice);
+        assertEq(b.quantity, 1000);
+        assertEq(b.origin, bytes32("GR-PEL"));
+        assertEq(uint8(b.category), uint8(Category.PERISHABLE));
+        assertEq(b.productTypeId, 0);
+        assertEq(b.unitId, 0);
+    }
+
+    function test_createBatch_revertsWhenInvalidProductType() public {
+        tc.registerUser(alice, "Alice", Role.PRODUCER);
+
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.InvalidProductType.selector);
+        tc.createBatch(
+            "BAD-001",
+            99, // productTypeId out of range (only 7 seeded: ids 0–6)
+            Category.PERISHABLE,
+            0,
+            1000,
+            "GR-PEL",
+            0
+        );
+    }
+
+    function test_createBatch_revertsWhenInvalidUnit() public {
+        tc.registerUser(alice, "Alice", Role.PRODUCER);
+
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.InvalidUnit.selector);
+        tc.createBatch(
+            "BAD-002",
+            0,
+            Category.PERISHABLE,
+            99, // unitId out of range (only 7 seeded: ids 0–6)
+            1000,
+            "GR-PEL",
+            0
+        );
+    }
 }
