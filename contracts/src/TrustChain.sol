@@ -76,11 +76,14 @@ contract TrustChain is ITrustChain {
 
         allowedTransitions[Status.PRODUCED][Status.STORED] = true;
         allowedTransitions[Status.PRODUCED][Status.IN_TRANSIT] = true;
+        allowedTransitions[Status.PRODUCED][Status.RECALLED] = true;
         allowedTransitions[Status.STORED][Status.IN_TRANSIT] = true;
         allowedTransitions[Status.STORED][Status.DISTRIBUTED] = true;
         allowedTransitions[Status.STORED][Status.DISPOSED] = true;
+        allowedTransitions[Status.STORED][Status.RECALLED] = true;
         allowedTransitions[Status.IN_TRANSIT][Status.STORED] = true;
         allowedTransitions[Status.IN_TRANSIT][Status.DISTRIBUTED] = true;
+        allowedTransitions[Status.IN_TRANSIT][Status.RECALLED] = true;
         allowedTransitions[Status.DISTRIBUTED][Status.RECALLED] = true;
         allowedTransitions[Status.RECALLED][Status.STORED] = true;
     }
@@ -168,16 +171,14 @@ contract TrustChain is ITrustChain {
 
     function recallBatch(bytes32 serialNumber, bytes32 location) external onlyAuditor {
         Batch storage b = _requireBatch(serialNumber);
-        _transition(b, serialNumber, Status.RECALLED, location);
         b.recalled = true;
+        _transition(b, serialNumber, Status.RECALLED, location);
         emit BatchRecalled(serialNumber, msg.sender);
     }
 
     function certifyBatch(bytes32 serialNumber) external onlyAuditor {
         Batch storage b = _requireBatch(serialNumber);
-        if (b.status == Status.RECALLED || b.status == Status.DISPOSED) {
-            revert CannotCertifyInStatus(b.status);
-        }
+        if (b.status != Status.DISTRIBUTED) revert CannotCertifyInStatus(b.status);
         if (b.certified) revert AlreadyCertified();
         b.certified = true;
         emit BatchCertified(serialNumber, msg.sender);

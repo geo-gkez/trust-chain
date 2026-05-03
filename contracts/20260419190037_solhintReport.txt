@@ -1,0 +1,228 @@
+
+src/TrustChain.sol
+
+║ Line     │ Column   │ Type     │ Message                                                │ Rule ID              ║
+╟──────────┼──────────┼──────────┼────────────────────────────────────────────────────────┼──────────────────────╢
+║ 9        │ 1        │ warning  │ Missing @author tag in contract 'TrustChain'           │ use-natspec          ║
+║ 12       │ 5        │ warning  │ Missing @notice tag in variable 'users'                │ use-natspec          ║
+║ 14       │ 5        │ warning  │ Missing @notice tag in variable 'batches'              │ use-natspec          ║
+║ 16       │ 5        │ warning  │ Missing @notice tag in variable 'productTypeCount'     │ use-natspec          ║
+║ 17       │ 5        │ warning  │ Missing @notice tag in variable 'productTypeNames'     │ use-natspec          ║
+║ 19       │ 5        │ warning  │ Missing @notice tag in variable 'unitCount'            │ use-natspec          ║
+║ 20       │ 5        │ warning  │ Missing @notice tag in variable 'unitNames'            │ use-natspec          ║
+║ 22       │ 5        │ warning  │ Missing @notice tag in variable                        │ use-natspec          ║
+║          │          │          │ 'allowedTransitions'                                   │                      ║
+║ 58       │ 5        │ warning  │ Explicitly mark visibility in function (Set            │ func-visibility      ║
+║          │          │          │ ignoreConstructors to true if using solidity           │                      ║
+║          │          │          │ >=0.7.0)                                               │                      ║
+║ 90       │ 5        │ warning  │ Missing @notice tag in function 'registerUser'         │ use-natspec          ║
+║ 90       │ 5        │ warning  │ Missing @param tag in function 'registerUser'          │ use-natspec          ║
+║ 90       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'registerUser'. Expected: [user, name, role],          │                      ║
+║          │          │          │ Found: []                                              │                      ║
+║ 94       │ 5        │ warning  │ Missing @notice tag in function 'deactivateUser'       │ use-natspec          ║
+║ 94       │ 5        │ warning  │ Missing @param tag in function 'deactivateUser'        │ use-natspec          ║
+║ 94       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'deactivateUser'. Expected: [user], Found: []          │                      ║
+║ 100      │ 5        │ warning  │ Missing @notice tag in function 'activateUser'         │ use-natspec          ║
+║ 100      │ 5        │ warning  │ Missing @param tag in function 'activateUser'          │ use-natspec          ║
+║ 100      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'activateUser'. Expected: [user], Found: []            │                      ║
+║ 105      │ 5        │ warning  │ Missing @notice tag in function 'addProductType'       │ use-natspec          ║
+║ 105      │ 5        │ warning  │ Missing @param tag in function 'addProductType'        │ use-natspec          ║
+║ 105      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'addProductType'. Expected: [name], Found: []          │                      ║
+║ 109      │ 5        │ warning  │ Missing @notice tag in function 'addUnit'              │ use-natspec          ║
+║ 109      │ 5        │ warning  │ Missing @param tag in function 'addUnit'               │ use-natspec          ║
+║ 109      │ 5        │ warning  │ Mismatch in @param names for function 'addUnit'.       │ use-natspec          ║
+║          │          │          │ Expected: [name], Found: []                            │                      ║
+║ 115      │ 5        │ warning  │ Missing @notice tag in function 'createBatch'          │ use-natspec          ║
+║ 115      │ 5        │ warning  │ Missing @param tag in function 'createBatch'           │ use-natspec          ║
+║ 115      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'createBatch'. Expected: [serialNumber,                │                      ║
+║          │          │          │ productTypeId, category, unitId, quantity, origin,     │                      ║
+║          │          │          │ expiryDate], Found: []                                 │                      ║
+║ 124      │ 13       │ warning  │ GC: Non strict inequality found. Try converting to     │ gas-strict-          ║
+║          │          │          │ a strict one                                           │ inequalities         ║
+║ 125      │ 13       │ warning  │ GC: Non strict inequality found. Try converting to     │ gas-strict-          ║
+║          │          │          │ a strict one                                           │ inequalities         ║
+║ 155      │ 5        │ warning  │ Missing @notice tag in function 'receiveBatch'         │ use-natspec          ║
+║ 155      │ 5        │ warning  │ Missing @param tag in function 'receiveBatch'          │ use-natspec          ║
+║ 155      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'receiveBatch'. Expected: [serialNumber,               │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 159      │ 5        │ warning  │ Missing @notice tag in function 'shipBatch'            │ use-natspec          ║
+║ 159      │ 5        │ warning  │ Missing @param tag in function 'shipBatch'             │ use-natspec          ║
+║ 159      │ 5        │ warning  │ Mismatch in @param names for function 'shipBatch'.     │ use-natspec          ║
+║          │          │          │ Expected: [serialNumber, location], Found: []          │                      ║
+║ 163      │ 5        │ warning  │ Missing @notice tag in function 'distributeBatch'      │ use-natspec          ║
+║ 163      │ 5        │ warning  │ Missing @param tag in function 'distributeBatch'       │ use-natspec          ║
+║ 163      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'distributeBatch'. Expected: [serialNumber,            │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 169      │ 5        │ warning  │ Missing @notice tag in function 'recallBatch'          │ use-natspec          ║
+║ 169      │ 5        │ warning  │ Missing @param tag in function 'recallBatch'           │ use-natspec          ║
+║ 169      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'recallBatch'. Expected: [serialNumber, location],     │                      ║
+║          │          │          │ Found: []                                              │                      ║
+║ 176      │ 5        │ warning  │ Missing @notice tag in function 'certifyBatch'         │ use-natspec          ║
+║ 176      │ 5        │ warning  │ Missing @param tag in function 'certifyBatch'          │ use-natspec          ║
+║ 176      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'certifyBatch'. Expected: [serialNumber], Found:       │                      ║
+║          │          │          │ []                                                     │                      ║
+║ 186      │ 5        │ warning  │ Missing @notice tag in function 'disposeBatch'         │ use-natspec          ║
+║ 186      │ 5        │ warning  │ Missing @param tag in function 'disposeBatch'          │ use-natspec          ║
+║ 186      │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'disposeBatch'. Expected: [serialNumber,               │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 194      │ 5        │ warning  │ Missing @notice tag in function 'getBatch'             │ use-natspec          ║
+║ 194      │ 5        │ warning  │ Missing @param tag in function 'getBatch'              │ use-natspec          ║
+║ 194      │ 5        │ warning  │ Mismatch in @param names for function 'getBatch'.      │ use-natspec          ║
+║          │          │          │ Expected: [serialNumber], Found: []                    │                      ║
+║ 198      │ 5        │ warning  │ Missing @notice tag in function 'getUser'              │ use-natspec          ║
+║ 198      │ 5        │ warning  │ Missing @param tag in function 'getUser'               │ use-natspec          ║
+║ 198      │ 5        │ warning  │ Mismatch in @param names for function 'getUser'.       │ use-natspec          ║
+║          │          │          │ Expected: [user], Found: []                            │                      ║
+║ 202      │ 5        │ warning  │ Missing @notice tag in function 'getProductTypes'      │ use-natspec          ║
+║ 204      │ 49       │ warning  │ GC: For [ i ] variable, increment/decrement by 1       │ gas-increment-by-one ║
+║          │          │          │ using: [ ++variable ] to save gas                      │                      ║
+║ 210      │ 5        │ warning  │ Missing @notice tag in function 'getUnits'             │ use-natspec          ║
+║ 212      │ 42       │ warning  │ GC: For [ i ] variable, increment/decrement by 1       │ gas-increment-by-one ║
+║          │          │          │ using: [ ++variable ] to save gas                      │                      ║
+║ 243      │ 49       │ warning  │ GC: For [ i ] variable, increment/decrement by 1       │ gas-increment-by-one ║
+║          │          │          │ using: [ ++variable ] to save gas                      │                      ║
+║ 248      │ 9        │ warning  │ GC: For [ productTypeCount ] variable,                 │ gas-increment-by-one ║
+║          │          │          │ increment/decrement by 1 using: [ ++variable ] to      │                      ║
+║          │          │          │ save gas                                               │                      ║
+║ 253      │ 42       │ warning  │ GC: For [ i ] variable, increment/decrement by 1       │ gas-increment-by-one ║
+║          │          │          │ using: [ ++variable ] to save gas                      │                      ║
+║ 258      │ 9        │ warning  │ GC: For [ unitCount ] variable,                        │ gas-increment-by-one ║
+║          │          │          │ increment/decrement by 1 using: [ ++variable ] to      │                      ║
+║          │          │          │ save gas                                               │                      ║
+
+src/ITrustChain.sol
+
+║ Line     │ Column   │ Type     │ Message                                                │ Rule ID              ║
+╟──────────┼──────────┼──────────┼────────────────────────────────────────────────────────┼──────────────────────╢
+║ 8        │ 1        │ warning  │ Missing @author tag in contract 'ITrustChain'          │ use-natspec          ║
+║ 11       │ 5        │ warning  │ Missing @notice tag in event 'UserRegistered'          │ use-natspec          ║
+║ 11       │ 5        │ warning  │ Missing @param tag in event 'UserRegistered'           │ use-natspec          ║
+║ 11       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'UserRegistered'. Expected: [user, name, role],        │                      ║
+║          │          │          │ Found: []                                              │                      ║
+║ 12       │ 5        │ warning  │ Missing @notice tag in event 'UserDeactivated'         │ use-natspec          ║
+║ 12       │ 5        │ warning  │ Missing @param tag in event 'UserDeactivated'          │ use-natspec          ║
+║ 12       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'UserDeactivated'. Expected: [user], Found: []         │                      ║
+║ 13       │ 5        │ warning  │ Missing @notice tag in event 'UserActivated'           │ use-natspec          ║
+║ 13       │ 5        │ warning  │ Missing @param tag in event 'UserActivated'            │ use-natspec          ║
+║ 13       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'UserActivated'. Expected: [user], Found: []           │                      ║
+║ 14       │ 5        │ warning  │ Missing @notice tag in event 'ProductTypeAdded'        │ use-natspec          ║
+║ 14       │ 5        │ warning  │ Missing @param tag in event 'ProductTypeAdded'         │ use-natspec          ║
+║ 14       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'ProductTypeAdded'. Expected: [id, name], Found:       │                      ║
+║          │          │          │ []                                                     │                      ║
+║ 15       │ 5        │ warning  │ Missing @notice tag in event 'UnitAdded'               │ use-natspec          ║
+║ 15       │ 5        │ warning  │ Missing @param tag in event 'UnitAdded'                │ use-natspec          ║
+║ 15       │ 5        │ warning  │ Mismatch in @param names for event 'UnitAdded'.        │ use-natspec          ║
+║          │          │          │ Expected: [id, name], Found: []                        │                      ║
+║ 17       │ 5        │ warning  │ Missing @notice tag in event 'BatchCreated'            │ use-natspec          ║
+║ 17       │ 5        │ warning  │ Missing @param tag in event 'BatchCreated'             │ use-natspec          ║
+║ 17       │ 5        │ warning  │ Mismatch in @param names for event 'BatchCreated'.     │ use-natspec          ║
+║          │          │          │ Expected: [serialNumber, producer], Found: []          │                      ║
+║ 19       │ 5        │ warning  │ Missing @notice tag in event 'BatchTransitioned'       │ use-natspec          ║
+║ 19       │ 5        │ warning  │ Missing @param tag in event 'BatchTransitioned'        │ use-natspec          ║
+║ 19       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'BatchTransitioned'. Expected: [serialNumber,          │                      ║
+║          │          │          │ from, to, location, by, at], Found: []                 │                      ║
+║ 23       │ 5        │ warning  │ Missing @notice tag in event 'BatchCertified'          │ use-natspec          ║
+║ 23       │ 5        │ warning  │ Missing @param tag in event 'BatchCertified'           │ use-natspec          ║
+║ 23       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'BatchCertified'. Expected: [serialNumber,             │                      ║
+║          │          │          │ auditor], Found: []                                    │                      ║
+║ 24       │ 5        │ warning  │ Missing @notice tag in event 'BatchRecalled'           │ use-natspec          ║
+║ 24       │ 5        │ warning  │ Missing @param tag in event 'BatchRecalled'            │ use-natspec          ║
+║ 24       │ 5        │ warning  │ Mismatch in @param names for event                     │ use-natspec          ║
+║          │          │          │ 'BatchRecalled'. Expected: [serialNumber,              │                      ║
+║          │          │          │ auditor], Found: []                                    │                      ║
+║ 51       │ 5        │ warning  │ Missing @notice tag in function 'registerUser'         │ use-natspec          ║
+║ 51       │ 5        │ warning  │ Missing @param tag in function 'registerUser'          │ use-natspec          ║
+║ 51       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'registerUser'. Expected: [user, name, role],          │                      ║
+║          │          │          │ Found: []                                              │                      ║
+║ 52       │ 5        │ warning  │ Missing @notice tag in function 'deactivateUser'       │ use-natspec          ║
+║ 52       │ 5        │ warning  │ Missing @param tag in function 'deactivateUser'        │ use-natspec          ║
+║ 52       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'deactivateUser'. Expected: [user], Found: []          │                      ║
+║ 53       │ 5        │ warning  │ Missing @notice tag in function 'activateUser'         │ use-natspec          ║
+║ 53       │ 5        │ warning  │ Missing @param tag in function 'activateUser'          │ use-natspec          ║
+║ 53       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'activateUser'. Expected: [user], Found: []            │                      ║
+║ 54       │ 5        │ warning  │ Missing @notice tag in function 'addProductType'       │ use-natspec          ║
+║ 54       │ 5        │ warning  │ Missing @param tag in function 'addProductType'        │ use-natspec          ║
+║ 54       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'addProductType'. Expected: [name], Found: []          │                      ║
+║ 55       │ 5        │ warning  │ Missing @notice tag in function 'addUnit'              │ use-natspec          ║
+║ 55       │ 5        │ warning  │ Missing @param tag in function 'addUnit'               │ use-natspec          ║
+║ 55       │ 5        │ warning  │ Mismatch in @param names for function 'addUnit'.       │ use-natspec          ║
+║          │          │          │ Expected: [name], Found: []                            │                      ║
+║ 59       │ 5        │ warning  │ Missing @notice tag in function 'createBatch'          │ use-natspec          ║
+║ 59       │ 5        │ warning  │ Missing @param tag in function 'createBatch'           │ use-natspec          ║
+║ 59       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'createBatch'. Expected: [serialNumber,                │                      ║
+║          │          │          │ productTypeId, category, unitId, quantity, origin,     │                      ║
+║          │          │          │ expiryDate], Found: []                                 │                      ║
+║ 71       │ 5        │ warning  │ Missing @notice tag in function 'receiveBatch'         │ use-natspec          ║
+║ 71       │ 5        │ warning  │ Missing @param tag in function 'receiveBatch'          │ use-natspec          ║
+║ 71       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'receiveBatch'. Expected: [serialNumber,               │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 72       │ 5        │ warning  │ Missing @notice tag in function 'shipBatch'            │ use-natspec          ║
+║ 72       │ 5        │ warning  │ Missing @param tag in function 'shipBatch'             │ use-natspec          ║
+║ 72       │ 5        │ warning  │ Mismatch in @param names for function 'shipBatch'.     │ use-natspec          ║
+║          │          │          │ Expected: [serialNumber, location], Found: []          │                      ║
+║ 73       │ 5        │ warning  │ Missing @notice tag in function 'distributeBatch'      │ use-natspec          ║
+║ 73       │ 5        │ warning  │ Missing @param tag in function 'distributeBatch'       │ use-natspec          ║
+║ 73       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'distributeBatch'. Expected: [serialNumber,            │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 74       │ 5        │ warning  │ Missing @notice tag in function 'recallBatch'          │ use-natspec          ║
+║ 74       │ 5        │ warning  │ Missing @param tag in function 'recallBatch'           │ use-natspec          ║
+║ 74       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'recallBatch'. Expected: [serialNumber, location],     │                      ║
+║          │          │          │ Found: []                                              │                      ║
+║ 75       │ 5        │ warning  │ Missing @notice tag in function 'certifyBatch'         │ use-natspec          ║
+║ 75       │ 5        │ warning  │ Missing @param tag in function 'certifyBatch'          │ use-natspec          ║
+║ 75       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'certifyBatch'. Expected: [serialNumber], Found:       │                      ║
+║          │          │          │ []                                                     │                      ║
+║ 76       │ 5        │ warning  │ Missing @notice tag in function 'disposeBatch'         │ use-natspec          ║
+║ 76       │ 5        │ warning  │ Missing @param tag in function 'disposeBatch'          │ use-natspec          ║
+║ 76       │ 5        │ warning  │ Mismatch in @param names for function                  │ use-natspec          ║
+║          │          │          │ 'disposeBatch'. Expected: [serialNumber,               │                      ║
+║          │          │          │ location], Found: []                                   │                      ║
+║ 80       │ 5        │ warning  │ Missing @notice tag in function 'getBatch'             │ use-natspec          ║
+║ 80       │ 5        │ warning  │ Missing @param tag in function 'getBatch'              │ use-natspec          ║
+║ 80       │ 5        │ warning  │ Mismatch in @param names for function 'getBatch'.      │ use-natspec          ║
+║          │          │          │ Expected: [serialNumber], Found: []                    │                      ║
+║ 81       │ 5        │ warning  │ Missing @notice tag in function 'getUser'              │ use-natspec          ║
+║ 81       │ 5        │ warning  │ Missing @param tag in function 'getUser'               │ use-natspec          ║
+║ 81       │ 5        │ warning  │ Mismatch in @param names for function 'getUser'.       │ use-natspec          ║
+║          │          │          │ Expected: [user], Found: []                            │                      ║
+║ 82       │ 5        │ warning  │ Missing @notice tag in function 'getProductTypes'      │ use-natspec          ║
+║ 83       │ 5        │ warning  │ Missing @notice tag in function 'getUnits'             │ use-natspec          ║
+
+src/DataTypes.sol
+
+║ Line     │ Column   │ Type     │ Message                                                │ Rule ID              ║
+╟──────────┼──────────┼──────────┼────────────────────────────────────────────────────────┼──────────────────────╢
+║ 35       │ 1        │ warning  │ GC: For [ User ] struct, packing seems                 │ gas-struct-packing   ║
+║          │          │          │ inefficient. Try rearranging to achieve 32bytes        │                      ║
+║          │          │          │ slots                                                  │                      ║
+
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ 0 Errors                                                                                                       ║
+╟────────────────────────────────────────────────────────────────────────────────────────────────────────────────╢
+║ 134 Warnings                                                                                                   ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

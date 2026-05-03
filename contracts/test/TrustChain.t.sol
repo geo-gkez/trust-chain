@@ -675,11 +675,14 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_recallBatch_revertsOnInvalidTransition() public {
-        // PRODUCED → RECALLED is not allowed
-        _registerAll();
+        // DISPOSED → RECALLED is not allowed — DISPOSED is the terminal state.
+        _toRecalledStored();
+        vm.prank(charlie);
+        tc.disposeBatch(SERIAL, LOC_A);
+
         vm.prank(auditor);
         vm.expectRevert(
-            abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.PRODUCED, Status.RECALLED)
+            abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.DISPOSED, Status.RECALLED)
         );
         tc.recallBatch(SERIAL, LOC_C);
     }
@@ -687,7 +690,7 @@ contract TrustChainTest is TrustChainTestBase {
     // ── certifyBatch ─────────────────────────────────────────────────────
 
     function test_certifyBatch_setsCertifiedFlag() public {
-        _registerAll();
+        _toDistributed();
         vm.prank(auditor);
         tc.certifyBatch(SERIAL);
 
@@ -695,7 +698,7 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_certifyBatch_emitsEvent() public {
-        _registerAll();
+        _toDistributed();
 
         vm.expectEmit(true, true, false, false);
         emit ITrustChain.BatchCertified(SERIAL, auditor);
@@ -712,7 +715,7 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_certifyBatch_revertsWhenUnauthorized() public {
-        _registerAll();
+        _toDistributed();
         vm.prank(alice);
         vm.expectRevert(ITrustChain.Unauthorized.selector);
         tc.certifyBatch(SERIAL);
@@ -720,12 +723,20 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_certifyBatch_revertsWhenAlreadyCertified() public {
         // Idempotency: certifying twice should revert rather than re-emit the event.
-        _registerAll();
+        _toDistributed();
         vm.prank(auditor);
         tc.certifyBatch(SERIAL);
 
         vm.prank(auditor);
         vm.expectRevert(ITrustChain.AlreadyCertified.selector);
+        tc.certifyBatch(SERIAL);
+    }
+
+    function test_certifyBatch_revertsWhenNotDistributed() public {
+        // Certification only valid post-distribution; PRODUCED must revert.
+        _registerAll();
+        vm.prank(auditor);
+        vm.expectRevert(abi.encodeWithSelector(ITrustChain.CannotCertifyInStatus.selector, Status.PRODUCED));
         tc.certifyBatch(SERIAL);
     }
 
