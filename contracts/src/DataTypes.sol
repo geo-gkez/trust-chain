@@ -45,7 +45,7 @@ struct User {
 /// @notice Product batch tracked through the supply chain.
 /// @dev Keyed by `serialNumber` in the `batches` mapping — no internal uint256 id.
 struct Batch {
-    // Slot 0 — 32 bytes (perfectly packed)
+    // Slot 0 — 32 bytes
     uint128 quantity;
     uint48 creationDate;
     uint48 expiryDate;
