@@ -1,7 +1,7 @@
 {
   "name": "TrustChain",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
-  "postCreateCommand": "curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y python3-pip && pip3 install --break-system-packages slither-analyzer solc-select && echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && solc-select install 0.8.28 && solc-select use 0.8.28 && curl -L https://foundry.paradigm.xyz | bash && ~/.foundry/bin/foundryup && npm install -g solhint",
   "customizations": {
     "vscode": {
       "extensions": [
