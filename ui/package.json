@@ -9,10 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.34"
+    "@mdi/font": "^7.4.47",
+    "ethers": "^6.16.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.34",
+    "vue-router": "^5.0.7",
+    "vuetify": "^4.0.7"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vite-plugin-vuetify": "^2.1.3"
   }
 }
