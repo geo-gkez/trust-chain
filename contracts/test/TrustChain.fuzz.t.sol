@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {TrustChainTestBase} from "./TrustChainTestBase.t.sol";
 import {ITrustChain} from "../src/ITrustChain.sol";
-import {Role, Status, Category} from "../src/DataTypes.sol";
+import {Role, Category} from "../src/DataTypes.sol";
 
 /// @notice Property / fuzz tests for TrustChain.
 /// @dev Each testFuzz_* runs ~256 times by default with random inputs.

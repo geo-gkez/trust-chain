@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(we use dev container and we do not have the forge installed here)"
+    ]
+  }
+}

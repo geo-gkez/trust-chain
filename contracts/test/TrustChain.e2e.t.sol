@@ -30,33 +30,53 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.PRODUCED));
         assertEq(tc.getBatch(OLIVE).currentHolder, alice);
 
-        // Charlie (WAREHOUSE) receives at origin warehouse
+        // Alice hands custody to Charlie (WAREHOUSE) at origin
+        vm.prank(alice);
+        tc.transferCustody(OLIVE, charlie);
+
+        // Charlie receives at origin warehouse
         vm.prank(charlie);
         tc.receiveBatch(OLIVE, "WH-KALAMATA");
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.STORED));
         assertEq(tc.getBatch(OLIVE).currentHolder, charlie);
 
-        // Bob (TRANSPORTER) picks up for first leg
+        // Charlie hands custody to Bob (TRANSPORTER) for first leg
+        vm.prank(charlie);
+        tc.transferCustody(OLIVE, bob);
+
+        // Bob picks up for first leg
         vm.prank(bob);
         tc.shipBatch(OLIVE, "TRUCK-001");
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.IN_TRANSIT));
+
+        // Bob hands custody to Charlie at hub warehouse
+        vm.prank(bob);
+        tc.transferCustody(OLIVE, charlie);
 
         // Charlie receives at hub warehouse
         vm.prank(charlie);
         tc.receiveBatch(OLIVE, "WH-ATHENS");
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.STORED));
 
+        // Charlie hands custody to Bob for final leg
+        vm.prank(charlie);
+        tc.transferCustody(OLIVE, bob);
+
         // Bob ships final leg
         vm.prank(bob);
         tc.shipBatch(OLIVE, "TRUCK-002");
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.IN_TRANSIT));
+
+        // Bob hands custody to distributor
+        vm.prank(bob);
+        tc.transferCustody(OLIVE, distributor);
 
         // Distributor delivers
         vm.prank(distributor);
         tc.distributeBatch(OLIVE, "DIST-PIR");
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.DISTRIBUTED));
 
-        // Auditor certifies after successful delivery
+        // Auditor certifies after successful delivery (no custody check)
         vm.prank(auditor);
         tc.certifyBatch(OLIVE);
 
@@ -75,26 +95,42 @@ contract TrustChainE2ETest is TrustChainTestBase {
         tc.createBatch(PHARMA, 1, Category.REFRIGERATED, 0, 500, "GR-ATH", 0);
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.PRODUCED));
 
+        // Alice hands custody to Charlie (WAREHOUSE)
+        vm.prank(alice);
+        tc.transferCustody(PHARMA, charlie);
+
         // Charlie receives at origin warehouse
         vm.prank(charlie);
         tc.receiveBatch(PHARMA, "WH-ATHENS");
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.STORED));
+
+        // Charlie hands custody to Bob (TRANSPORTER)
+        vm.prank(charlie);
+        tc.transferCustody(PHARMA, bob);
 
         // Bob ships to distributor
         vm.prank(bob);
         tc.shipBatch(PHARMA, "TRUCK-PHARMA");
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.IN_TRANSIT));
 
+        // Bob hands custody to distributor
+        vm.prank(bob);
+        tc.transferCustody(PHARMA, distributor);
+
         // Distributor delivers
         vm.prank(distributor);
         tc.distributeBatch(PHARMA, "DIST-ATH");
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.DISTRIBUTED));
 
-        // Auditor recalls due to safety issue
+        // Auditor recalls due to safety issue (no custody check — auditor override)
         vm.prank(auditor);
         tc.recallBatch(PHARMA, "DIST-ATH");
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.RECALLED));
         assertTrue(tc.getBatch(PHARMA).recalled);
+
+        // Auditor designates Charlie's warehouse for quarantine receipt
+        vm.prank(auditor);
+        tc.transferCustody(PHARMA, charlie);
 
         // Charlie receives into quarantine — recalled flag must survive the transition
         vm.prank(charlie);
@@ -102,7 +138,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.STORED));
         assertTrue(tc.getBatch(PHARMA).recalled);
 
-        // recalled flag permanently blocks re-distribution
+        // recalled flag blocks re-distribution (recalled guard fires before custody check)
         vm.prank(distributor);
         vm.expectRevert(ITrustChain.CannotDistributeRecalled.selector);
         tc.distributeBatch(PHARMA, "DIST-ATH");

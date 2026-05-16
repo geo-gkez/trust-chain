@@ -19,7 +19,7 @@ contract TrustChain is ITrustChain {
     uint8 public unitCount;
     mapping(uint8 => string) public unitNames;
 
-    mapping(Status => mapping(Status => bool)) public allowedTransitions;
+    mapping(Status => mapping(Status => bool)) private allowedTransitions;
 
     // ── Modifiers ───────────────────────────────────────────────────────
 
@@ -155,20 +155,38 @@ contract TrustChain is ITrustChain {
 
     // ── Lifecycle Domain ────────────────────────────────────────────────
 
+    function transferCustody(bytes32 serialNumber, address newHolder) external {
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+        if (newHolder == address(0)) revert ZeroAddress();
+        if (!users[newHolder].isActive) revert Unauthorized();
+        address oldHolder = b.currentHolder;
+        b.currentHolder = newHolder;
+        emit CustodyTransferred(serialNumber, oldHolder, newHolder);
+    }
+
     function receiveBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
-        _transition(serialNumber, Status.STORED, location);
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+        _transition(b, serialNumber, Status.STORED, location);
     }
 
     function shipBatch(bytes32 serialNumber, bytes32 location) external onlyTransporter {
-        _transition(serialNumber, Status.IN_TRANSIT, location);
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+        _transition(b, serialNumber, Status.IN_TRANSIT, location);
     }
 
     function distributeBatch(bytes32 serialNumber, bytes32 location) external onlyDistributor {
         Batch storage b = _requireBatch(serialNumber);
         if (b.recalled) revert CannotDistributeRecalled();
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
         _transition(b, serialNumber, Status.DISTRIBUTED, location);
     }
 
+    /// @notice Recalls a batch. After this call the auditor becomes `currentHolder`.
+    /// To dispose the recalled batch, the auditor must call `transferCustody` to a
+    /// warehouse address before the warehouse can call `disposeBatch`.
     function recallBatch(bytes32 serialNumber, bytes32 location) external onlyAuditor {
         Batch storage b = _requireBatch(serialNumber);
         b.recalled = true;
@@ -184,9 +202,12 @@ contract TrustChain is ITrustChain {
         emit BatchCertified(serialNumber, msg.sender);
     }
 
+    /// @notice Disposes a recalled batch. The warehouse must be the `currentHolder`
+    /// (set via `transferCustody` by the auditor after `recallBatch`).
     function disposeBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
         Batch storage b = _requireBatch(serialNumber);
         if (!b.recalled) revert BatchNotRecalled();
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
         _transition(b, serialNumber, Status.DISPOSED, location);
     }
 
@@ -266,15 +287,16 @@ contract TrustChain is ITrustChain {
 
     /// @dev Overload for callers that already hold the storage reference.
     function _transition(Batch storage b, bytes32 serialNumber, Status to, bytes32 location) internal {
+        // Expiry blocks forward commerce only. Any transition that is part of reverse
+        // logistics (currently in RECALLED, or heading to RECALLED / DISPOSED) must
+        // always succeed so expired/contaminated goods can be removed from the chain.
+        if (b.status != Status.RECALLED && to != Status.RECALLED && to != Status.DISPOSED) {
+            if (b.expiryDate != 0 && b.expiryDate < block.timestamp) revert BatchExpired();
+        }
         Status from = b.status;
         if (!allowedTransitions[from][to]) revert InvalidTransition(from, to);
         b.status = to;
         b.currentHolder = msg.sender;
         emit BatchTransitioned(serialNumber, from, to, location, msg.sender, uint48(block.timestamp));
-    }
-
-    function _transition(bytes32 serialNumber, Status to, bytes32 location) internal {
-        Batch storage b = _requireBatch(serialNumber);
-        _transition(b, serialNumber, to, location);
     }
 }

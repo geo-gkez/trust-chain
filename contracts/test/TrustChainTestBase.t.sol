@@ -3,8 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {TrustChain} from "../src/TrustChain.sol";
-import {ITrustChain} from "../src/ITrustChain.sol";
-import {Role, Status, Category, User, Batch} from "../src/DataTypes.sol";
+import {Role, Category} from "../src/DataTypes.sol";
 
 /// @dev Shared fixture for every test contract in the suite.
 /// Declares no `test_*` / `testFuzz_*` / `invariant_*` functions, so it never runs on its own.
@@ -44,6 +43,8 @@ abstract contract TrustChainTestBase is Test {
     /// Advance batch to STORED (PRODUCED → STORED via receiveBatch).
     function _toStored() internal {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
     }
@@ -51,6 +52,8 @@ abstract contract TrustChainTestBase is Test {
     /// Advance batch to IN_TRANSIT (PRODUCED → IN_TRANSIT via shipBatch).
     function _toInTransit() internal {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
         vm.prank(bob);
         tc.shipBatch(SERIAL, LOC_B);
     }
@@ -58,6 +61,8 @@ abstract contract TrustChainTestBase is Test {
     /// Advance batch to DISTRIBUTED (STORED → DISTRIBUTED).
     function _toDistributed() internal {
         _toStored();
+        vm.prank(charlie);
+        tc.transferCustody(SERIAL, distributor);
         vm.prank(distributor);
         tc.distributeBatch(SERIAL, LOC_C);
     }
@@ -68,6 +73,9 @@ abstract contract TrustChainTestBase is Test {
         _toDistributed();
         vm.prank(auditor);
         tc.recallBatch(SERIAL, LOC_C);
+        // auditor is now currentHolder; hand off to warehouse for disposal
+        vm.prank(auditor);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
     }

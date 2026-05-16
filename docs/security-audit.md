@@ -12,10 +12,10 @@ Target: `contracts/src/TrustChain.sol`, `contracts/src/ITrustChain.sol`, `contra
 | Metric | Count |
 |---|---|
 | Errors | 0 |
-| Warnings | 134 |
+| Warnings | 139 |
 | Security vulnerabilities | 0 |
 
-All 134 warnings fall into three categories: missing NatSpec documentation, one false-positive on constructor visibility, and minor gas micro-optimizations. No security issues were reported.
+All 139 warnings fall into three categories: missing NatSpec documentation and minor gas micro-optimizations. No security issues were reported. The constructor visibility false positive (S-2) is suppressed via `.solhint.json`.
 
 ---
 
@@ -47,11 +47,16 @@ All 134 warnings fall into three categories: missing NatSpec documentation, one 
 
 **Description:** Solhint reports that the constructor does not explicitly declare visibility.
 
-**Response:** False positive. In Solidity ≥ 0.7.0 constructors do not accept a visibility modifier — the compiler rejects it. The rule was suppressed by setting `ignoreConstructors: true` in `.solhint.json`.
+**Response:** False positive. In Solidity ≥ 0.7.0 constructors do not accept a visibility modifier — the compiler rejects it. The rule is suppressed via `.solhint.json`.
 
-**Action taken:** Updated `.solhint.json`:
+**Action taken:** Updated `.solhint.json` to add the `ignoreConstructors` flag:
 ```json
-"func-visibility": ["warn", { "ignoreConstructors": true }]
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "func-visibility": ["warn", { "ignoreConstructors": true }]
+  }
+}
 ```
 
 ---
@@ -62,8 +67,8 @@ All 134 warnings fall into three categories: missing NatSpec documentation, one 
 |---|---|
 | Rules | `gas-increment-by-one`, `gas-strict-inequalities` |
 | Severity | Warning |
-| Count | 7 |
-| Locations | `TrustChain.sol:124, 125, 204, 212, 243, 248, 253, 258` |
+| Count | 8 |
+| Locations | `TrustChain.sol:127, 128, 226, 234, 265, 270, 275, 280` |
 
 **Description:**
 - `gas-increment-by-one`: suggests `++i` over `i++` in loop counters (~3 gas saved per iteration).
@@ -105,24 +110,24 @@ Two slots total, no wasted space. Solhint's static analyzer did not recognize th
 | Detectors run | 101 |
 | High findings | 0 |
 | Medium findings | 0 |
-| Low / Info findings | 2 |
+| Low / Info findings | 4 |
 | Security vulnerabilities | 0 |
 
-Slither analyzed 2 contracts and produced 2 INFO-level findings, both under the `timestamp` detector. No high or medium severity issues were found.
+Slither produced 3 `timestamp` findings (all false positives) and 1 `dead-code` informational finding. No high or medium severity issues were found.
 
 ---
 
-### Finding SL-1 — block.timestamp used in expiry comparison
+### Finding SL-1 — block.timestamp used in expiry comparison (createBatch)
 
 | Field | Value |
 |---|---|
 | Detector | `timestamp` |
 | Severity | Info |
-| Location | `TrustChain.sol:129` — `createBatch` |
+| Location | `TrustChain.sol:132` — `createBatch` |
 
-**Description:** Slither flags the comparison `expiryDate != 0 && expiryDate < block.timestamp` because `block.timestamp` can be manipulated by validators by approximately ±15 seconds.
+**Description:** Slither flags `expiryDate != 0 && expiryDate < block.timestamp` because `block.timestamp` can be manipulated by validators by approximately ±15 seconds.
 
-**Response:** False positive for this use case. Supply chain expiry dates represent days, months, or years in the future. A validator manipulation window of 15 seconds has no practical impact on whether a batch is considered expired. The check is correct and necessary — it prevents producers from registering batches that have already expired.
+**Response:** False positive for this use case. Supply chain expiry dates represent days, months, or years in the future. A validator manipulation window of 15 seconds has no practical impact on whether a batch is considered expired.
 
 **Action taken:** None.
 
@@ -134,35 +139,96 @@ Slither analyzed 2 contracts and produced 2 INFO-level findings, both under the 
 |---|---|
 | Detector | `timestamp` |
 | Severity | Info |
-| Location | `TrustChain.sol:234` — `_registerUser` |
+| Location | `TrustChain.sol:256` — `_registerUser` |
 
 **Description:** Slither reports `users[account].ethAddress != address(0)` as a dangerous timestamp comparison inside `_registerUser`.
 
-**Response:** False positive — this comparison is a zero-address check to detect duplicate registrations and has no relationship to `block.timestamp`. Slither appears to misattribute the finding because `_registerUser` also writes `block.timestamp` to `registeredAt` in the same function, causing the detector to flag all comparisons in the function scope.
+**Response:** False positive — this is a zero-address check to detect duplicate registrations and has no relationship to `block.timestamp`. Slither misattributes the finding because `_registerUser` also writes `block.timestamp` to `registeredAt` in the same function body.
 
 **Action taken:** None.
 
 ---
 
-## 3. Known design trade-offs (self-identified)
+### Finding SL-3 — block.timestamp used in expiry check (_transition)
+
+| Field | Value |
+|---|---|
+| Detector | `timestamp` |
+| Severity | Info |
+| Location | `TrustChain.sol:294` — `_transition` |
+
+**Description:** Slither flags `b.expiryDate != 0 && b.expiryDate < block.timestamp` in the transition guard added during the chain-of-custody fix.
+
+**Response:** False positive — same rationale as SL-1. Supply chain expiry windows are measured in days or months; ±15 seconds of validator manipulation is irrelevant.
+
+**Action taken:** None.
+
+---
+
+### Finding SL-4 — Dead code: unused internal function overload
+
+| Field | Value |
+|---|---|
+| Detector | `dead-code` |
+| Severity | Informational |
+| Location | `TrustChain.sol:303-306` — `_transition(bytes32, Status, bytes32)` |
+
+**Description:** Slither reports that the convenience overload `_transition(bytes32 serialNumber, Status to, bytes32 location)` is defined but never called. All call sites use the primary overload that accepts a `Batch storage` reference directly.
+
+**Response:** Valid finding. The overload was written as a utility but became redundant as call sites were refactored to hold the storage reference for other checks. Removed.
+
+**Action taken:** Overload removed from `TrustChain.sol`.
+
+---
+
+## 3. Security properties verified
+
+Explicit analysis of the three most common smart contract vulnerability classes.
+
+### Reentrancy
+
+**Verdict: Not vulnerable.**
+
+Reentrancy requires an external call that can re-enter the contract before state is committed. `TrustChain` makes no ETH transfers and no external calls of any kind — all functions operate exclusively on internal storage mappings and emit events. There is no code path that calls another contract. Reentrancy is structurally impossible.
+
+### Integer overflow / underflow
+
+**Verdict: Not vulnerable.**
+
+The contract uses Solidity 0.8.28, which has built-in overflow and underflow protection on all arithmetic operations. Any operation that would overflow reverts automatically — no `SafeMath` library is needed. The only arithmetic in the contract is counter increments (`productTypeCount++`, `unitCount++`) and timestamp comparisons, both of which are safe under 0.8.x semantics.
+
+### Access control
+
+**Verdict: Correctly implemented.**
+
+Every state-changing function is protected by a named modifier (`onlyAdmin`, `onlyProducer`, `onlyTransporter`, `onlyWarehouse`, `onlyDistributor`, `onlyAuditor`). All modifiers delegate to `_requireRole(address, Role)`, which checks both that the caller is registered (`ethAddress != address(0)`) and that their role matches AND that `isActive == true`. Deactivated users fail all role checks. There is no function that mutates state without a role check, verified by inspection of every external and public function.
+
+---
+
+## 4. Known design trade-offs (self-identified)
+
+
+
 
 These are not tool findings but design decisions worth acknowledging in the report.
 
 | # | Issue | Severity | Response |
 |---|---|---|---|
-| D-1 | Expiry date not enforced at lifecycle transitions | Low | Accepted — batches can be shipped after expiry. Noted as future work: an oracle or keeper could enforce this. |
+| D-1 | Expiry date not enforced at lifecycle transitions | Low | **Fixed.** Expiry check added to `_transition()`. Scoped to forward commerce only — transitions to `RECALLED` or `DISPOSED`, and any transition while `status == RECALLED`, are exempt so expired goods can always be removed from the chain. |
 | D-2 | O(n) duplicate check in `_addProductType` / `_addUnit` | Low | Accepted — bounded by `uint8` (max 255 entries), admin-only, called only during setup. |
 | D-3 | Single admin centralization | Medium | Acknowledged design choice for academic scope. Future work: multisig admin. |
 | D-4 | No pause mechanism | Low | Out of scope. Future work: `Pausable` pattern. |
 
 ---
 
-## 4. Security mechanisms implemented
+## 5. Security mechanisms implemented
 
 | Mechanism | Location | Purpose |
 |---|---|---|
 | Role-based access control | Every state-changing function | Only authorized roles can call each function |
 | `isActive` check | `_requireRole` internal | Deactivated users are fully locked out |
+| Chain-of-custody enforcement | `transferCustody`, `shipBatch`, `receiveBatch`, `distributeBatch`, `disposeBatch` | Only the current holder can execute lifecycle transitions; custody is explicitly handed off via `transferCustody` |
+| Expiry enforcement | `_transition` internal | Expired batches are blocked from forward commerce; reverse logistics (recall, quarantine, disposal) are exempt |
 | `recalled` one-way latch | `recallBatch`, `distributeBatch` | Once recalled, a batch can never be re-distributed |
 | Transition matrix enforcement | `_transition` internal | Invalid state jumps are rejected at the contract level |
 | Custom errors | All reverts | Gas-efficient, unambiguous revert reasons |

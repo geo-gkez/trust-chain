@@ -30,15 +30,28 @@ contract TrustChainTest is TrustChainTestBase {
         assertEq(units[6], "M2");
     }
 
-    function test_constructor_seedsTransitionMatrix() public view {
-        // Valid transitions
-        assertTrue(tc.allowedTransitions(Status.PRODUCED, Status.STORED));
-        assertTrue(tc.allowedTransitions(Status.PRODUCED, Status.IN_TRANSIT));
-        assertTrue(tc.allowedTransitions(Status.DISTRIBUTED, Status.RECALLED));
+    function test_constructor_seedsTransitionMatrix() public {
+        // Verify the matrix behaviorally — a valid path succeeds, an invalid one reverts.
+        _registerAll(); // SERIAL is PRODUCED, holder = alice
 
-        // Invalid transitions
-        assertFalse(tc.allowedTransitions(Status.PRODUCED, Status.DISTRIBUTED));
-        assertFalse(tc.allowedTransitions(Status.DISPOSED, Status.STORED));
+        // PRODUCED → STORED is seeded as valid
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
+        vm.prank(charlie);
+        tc.receiveBatch(SERIAL, LOC_A);
+        assertEq(uint8(tc.getBatch(SERIAL).status), uint8(Status.STORED));
+
+        // PRODUCED → DISTRIBUTED is not seeded — a fresh batch cannot skip to distribution
+        bytes32 other = "BATCH-002";
+        vm.prank(alice);
+        tc.createBatch(other, 0, Category.PERISHABLE, 0, 100, "GR-PEL", 0);
+        vm.prank(alice);
+        tc.transferCustody(other, distributor);
+        vm.prank(distributor);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.PRODUCED, Status.DISTRIBUTED)
+        );
+        tc.distributeBatch(other, LOC_C);
     }
 
     // ── registerUser ────────────────────────────────────────────────────
@@ -255,10 +268,10 @@ contract TrustChainTest is TrustChainTestBase {
 
         // 3. Read back and assert all fields
         Batch memory b = tc.getBatch("OLIVE-GR-001");
-        assertEq(b.serialNumber, bytes32("OLIVE-GR-001"));
+        assertEq(b.serialNumber, "OLIVE-GR-001");
         assertEq(b.producer, alice);
         assertEq(b.quantity, 1000);
-        assertEq(b.origin, bytes32("GR-PEL"));
+        assertEq(b.origin, "GR-PEL");
         assertEq(uint8(b.category), uint8(Category.PERISHABLE));
         assertEq(b.productTypeId, 0);
         assertEq(b.unitId, 0);
@@ -401,6 +414,8 @@ contract TrustChainTest is TrustChainTestBase {
         vm.prank(alice);
         tc.createBatch(other, 1, Category.NON_PERISHABLE, 1, 500, "GR-ATH", 0);
 
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
 
@@ -417,6 +432,8 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_receiveBatch_producedToStored() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
 
@@ -425,7 +442,9 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_receiveBatch_inTransitToStored() public {
-        _toInTransit();
+        _toInTransit(); // bob is currentHolder
+        vm.prank(bob);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
 
@@ -436,8 +455,9 @@ contract TrustChainTest is TrustChainTestBase {
     function test_receiveBatch_recalledToStored() public {
         _toDistributed();
         vm.prank(auditor);
-        tc.recallBatch(SERIAL, LOC_C);
-
+        tc.recallBatch(SERIAL, LOC_C); // auditor is now currentHolder
+        vm.prank(auditor);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
 
@@ -447,6 +467,8 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_receiveBatch_updatesCurrentHolder() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
 
@@ -455,11 +477,20 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_receiveBatch_emitsEvent() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, charlie);
 
         vm.expectEmit(true, true, true, false);
         emit ITrustChain.BatchTransitioned(SERIAL, Status.PRODUCED, Status.STORED, LOC_A, charlie, 0);
 
         vm.prank(charlie);
+        tc.receiveBatch(SERIAL, LOC_A);
+    }
+
+    function test_receiveBatch_revertsWhenNotCurrentHolder() public {
+        _registerAll(); // currentHolder = alice (PRODUCER)
+        vm.prank(charlie); // charlie is WAREHOUSE but not currentHolder
+        vm.expectRevert(ITrustChain.NotCurrentHolder.selector);
         tc.receiveBatch(SERIAL, LOC_A);
     }
 
@@ -479,7 +510,9 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_receiveBatch_revertsOnInvalidTransition() public {
         // DISTRIBUTED → STORED is not in the allowed matrix
-        _toDistributed();
+        _toDistributed(); // distributor is currentHolder
+        vm.prank(distributor);
+        tc.transferCustody(SERIAL, charlie); // charlie needs custody so custody check passes
         vm.prank(charlie);
         vm.expectRevert(
             abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.DISTRIBUTED, Status.STORED)
@@ -491,6 +524,8 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_shipBatch_producedToInTransit() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
         vm.prank(bob);
         tc.shipBatch(SERIAL, LOC_B);
 
@@ -498,7 +533,9 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_shipBatch_storedToInTransit() public {
-        _toStored();
+        _toStored(); // charlie is currentHolder
+        vm.prank(charlie);
+        tc.transferCustody(SERIAL, bob);
         vm.prank(bob);
         tc.shipBatch(SERIAL, LOC_B);
 
@@ -507,6 +544,8 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_shipBatch_updatesCurrentHolder() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
         vm.prank(bob);
         tc.shipBatch(SERIAL, LOC_B);
 
@@ -515,11 +554,20 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_shipBatch_emitsEvent() public {
         _registerAll();
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
 
         vm.expectEmit(true, true, true, false);
         emit ITrustChain.BatchTransitioned(SERIAL, Status.PRODUCED, Status.IN_TRANSIT, LOC_B, bob, 0);
 
         vm.prank(bob);
+        tc.shipBatch(SERIAL, LOC_B);
+    }
+
+    function test_shipBatch_revertsWhenNotCurrentHolder() public {
+        _registerAll(); // currentHolder = alice (PRODUCER)
+        vm.prank(bob); // bob is TRANSPORTER but not currentHolder
+        vm.expectRevert(ITrustChain.NotCurrentHolder.selector);
         tc.shipBatch(SERIAL, LOC_B);
     }
 
@@ -539,7 +587,9 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_shipBatch_revertsOnInvalidTransition() public {
         // DISTRIBUTED → IN_TRANSIT is not allowed
-        _toDistributed();
+        _toDistributed(); // distributor is currentHolder
+        vm.prank(distributor);
+        tc.transferCustody(SERIAL, bob); // bob needs custody so custody check passes
         vm.prank(bob);
         vm.expectRevert(
             abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.DISTRIBUTED, Status.IN_TRANSIT)
@@ -550,7 +600,9 @@ contract TrustChainTest is TrustChainTestBase {
     // ── distributeBatch ──────────────────────────────────────────────────
 
     function test_distributeBatch_storedToDistributed() public {
-        _toStored();
+        _toStored(); // charlie is currentHolder
+        vm.prank(charlie);
+        tc.transferCustody(SERIAL, distributor);
         vm.prank(distributor);
         tc.distributeBatch(SERIAL, LOC_C);
 
@@ -558,7 +610,9 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_distributeBatch_inTransitToDistributed() public {
-        _toInTransit();
+        _toInTransit(); // bob is currentHolder
+        vm.prank(bob);
+        tc.transferCustody(SERIAL, distributor);
         vm.prank(distributor);
         tc.distributeBatch(SERIAL, LOC_C);
 
@@ -566,7 +620,9 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_distributeBatch_updatesCurrentHolder() public {
-        _toStored();
+        _toStored(); // charlie is currentHolder
+        vm.prank(charlie);
+        tc.transferCustody(SERIAL, distributor);
         vm.prank(distributor);
         tc.distributeBatch(SERIAL, LOC_C);
 
@@ -574,12 +630,21 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_distributeBatch_emitsEvent() public {
-        _toStored();
+        _toStored(); // charlie is currentHolder
+        vm.prank(charlie);
+        tc.transferCustody(SERIAL, distributor);
 
         vm.expectEmit(true, true, true, false);
         emit ITrustChain.BatchTransitioned(SERIAL, Status.STORED, Status.DISTRIBUTED, LOC_C, distributor, 0);
 
         vm.prank(distributor);
+        tc.distributeBatch(SERIAL, LOC_C);
+    }
+
+    function test_distributeBatch_revertsWhenNotCurrentHolder() public {
+        _toStored(); // charlie is currentHolder
+        vm.prank(distributor); // distributor is DISTRIBUTOR but not currentHolder
+        vm.expectRevert(ITrustChain.NotCurrentHolder.selector);
         tc.distributeBatch(SERIAL, LOC_C);
     }
 
@@ -599,7 +664,9 @@ contract TrustChainTest is TrustChainTestBase {
 
     function test_distributeBatch_revertsOnInvalidTransition() public {
         // PRODUCED → DISTRIBUTED is not allowed
-        _registerAll();
+        _registerAll(); // alice is currentHolder
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, distributor); // distributor needs custody so custody check passes
         vm.prank(distributor);
         vm.expectRevert(
             abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.PRODUCED, Status.DISTRIBUTED)
@@ -608,15 +675,19 @@ contract TrustChainTest is TrustChainTestBase {
     }
 
     function test_distributeBatch_revertsWhenRecalled() public {
-        // A batch that has been recalled must not be distributable
+        // A batch that has been recalled must not be distributable.
+        // The `recalled` guard fires before the custody check.
         _toDistributed();
         vm.prank(auditor);
-        tc.recallBatch(SERIAL, LOC_C);
+        tc.recallBatch(SERIAL, LOC_C); // auditor is now currentHolder
 
         // Re-store it so the transition would otherwise be valid
+        vm.prank(auditor);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
-        tc.receiveBatch(SERIAL, LOC_A);
+        tc.receiveBatch(SERIAL, LOC_A); // charlie is now currentHolder, status=STORED
 
+        // recalled guard fires first — custody check is irrelevant
         vm.prank(distributor);
         vm.expectRevert(ITrustChain.CannotDistributeRecalled.selector);
         tc.distributeBatch(SERIAL, LOC_C);
@@ -805,17 +876,142 @@ contract TrustChainTest is TrustChainTestBase {
         tc.disposeBatch(SERIAL, LOC_A);
     }
 
+    function test_disposeBatch_revertsWhenNotCurrentHolder() public {
+        _toRecalledStored(); // charlie is currentHolder, status=STORED, recalled=true
+        // Register a second warehouse and try to dispose without custody
+        address warehouse2 = makeAddr("Warehouse2");
+        tc.registerUser(warehouse2, "Warehouse2", Role.WAREHOUSE);
+        vm.prank(warehouse2);
+        vm.expectRevert(ITrustChain.NotCurrentHolder.selector);
+        tc.disposeBatch(SERIAL, LOC_A);
+    }
+
     function test_disposeBatch_revertsOnInvalidTransition() public {
         // A recalled batch still in RECALLED (not yet received to STORED)
         // passes the recalled gate but fails the matrix: RECALLED → DISPOSED is not allowed.
         _toDistributed();
         vm.prank(auditor);
-        tc.recallBatch(SERIAL, LOC_C);
-
+        tc.recallBatch(SERIAL, LOC_C); // auditor is now currentHolder, status=RECALLED
+        // give charlie custody so the custody check passes and the matrix check fires
+        vm.prank(auditor);
+        tc.transferCustody(SERIAL, charlie);
         vm.prank(charlie);
         vm.expectRevert(
             abi.encodeWithSelector(ITrustChain.InvalidTransition.selector, Status.RECALLED, Status.DISPOSED)
         );
         tc.disposeBatch(SERIAL, LOC_A);
+    }
+
+    // ── transferCustody ───────────────────────────────────────────────────
+
+    function test_transferCustody_updatesHolder() public {
+        _registerAll(); // alice is currentHolder
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
+        assertEq(tc.getBatch(SERIAL).currentHolder, bob);
+    }
+
+    function test_transferCustody_emitsEvent() public {
+        _registerAll();
+        vm.expectEmit(true, true, true, false);
+        emit ITrustChain.CustodyTransferred(SERIAL, alice, bob);
+        vm.prank(alice);
+        tc.transferCustody(SERIAL, bob);
+    }
+
+    function test_transferCustody_revertsWhenNotCurrentHolder() public {
+        _registerAll(); // currentHolder = alice
+        vm.prank(bob); // bob is not the holder
+        vm.expectRevert(ITrustChain.NotCurrentHolder.selector);
+        tc.transferCustody(SERIAL, charlie);
+    }
+
+    function test_transferCustody_revertsWhenBatchNotFound() public {
+        _registerAll();
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.BatchNotFound.selector);
+        tc.transferCustody("NO-SUCH-BATCH", bob);
+    }
+
+    function test_transferCustody_revertsWhenZeroAddress() public {
+        _registerAll();
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.ZeroAddress.selector);
+        tc.transferCustody(SERIAL, address(0));
+    }
+
+    function test_transferCustody_revertsWhenInactiveUser() public {
+        _registerAll();
+        tc.deactivateUser(bob);
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.Unauthorized.selector);
+        tc.transferCustody(SERIAL, bob);
+    }
+
+    // ── BatchExpired ──────────────────────────────────────────────────────
+
+    function test_transition_revertsWhenBatchExpired() public {
+        _registerAll();
+        vm.warp(1000);
+        vm.prank(alice);
+        tc.createBatch("EXP-BATCH", 0, Category.PERISHABLE, 0, 100, "GR-PEL", 2000);
+
+        vm.prank(alice);
+        tc.transferCustody("EXP-BATCH", charlie);
+        vm.warp(2001); // past expiry
+
+        vm.prank(charlie);
+        vm.expectRevert(ITrustChain.BatchExpired.selector);
+        tc.receiveBatch("EXP-BATCH", LOC_A);
+    }
+
+    function test_transition_allowsTransitionBeforeExpiry() public {
+        _registerAll();
+        vm.warp(1000);
+        vm.prank(alice);
+        tc.createBatch("EXP-BATCH", 0, Category.PERISHABLE, 0, 100, "GR-PEL", 2000);
+
+        vm.prank(alice);
+        tc.transferCustody("EXP-BATCH", charlie);
+        vm.warp(1999); // still before expiry
+
+        vm.prank(charlie);
+        tc.receiveBatch("EXP-BATCH", LOC_A);
+        assertEq(uint8(tc.getBatch("EXP-BATCH").status), uint8(Status.STORED));
+    }
+
+    function test_expiredBatch_canBeRecalled() public {
+        // An expired batch must still be recallable — that is the whole point of the
+        // recall mechanism for food/pharma products.
+        _registerAll();
+        vm.warp(1000);
+        vm.prank(alice);
+        tc.createBatch("EXP-BATCH", 0, Category.PERISHABLE, 0, 100, "GR-PEL", 2000);
+
+        vm.prank(alice);
+        tc.transferCustody("EXP-BATCH", charlie);
+        vm.prank(charlie);
+        tc.receiveBatch("EXP-BATCH", LOC_A); // STORED before expiry
+        vm.prank(charlie);
+        tc.transferCustody("EXP-BATCH", distributor);
+        vm.prank(distributor);
+        tc.distributeBatch("EXP-BATCH", LOC_C); // DISTRIBUTED before expiry
+
+        vm.warp(2001); // now expired
+
+        // Recall must succeed on an expired batch
+        vm.prank(auditor);
+        tc.recallBatch("EXP-BATCH", LOC_C);
+        assertEq(uint8(tc.getBatch("EXP-BATCH").status), uint8(Status.RECALLED));
+        assertTrue(tc.getBatch("EXP-BATCH").recalled);
+
+        // Dispose must also succeed
+        vm.prank(auditor);
+        tc.transferCustody("EXP-BATCH", charlie);
+        vm.prank(charlie);
+        tc.receiveBatch("EXP-BATCH", LOC_A); // RECALLED → STORED
+        vm.prank(charlie);
+        tc.disposeBatch("EXP-BATCH", LOC_A);
+        assertEq(uint8(tc.getBatch("EXP-BATCH").status), uint8(Status.DISPOSED));
     }
 }

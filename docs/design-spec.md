@@ -216,10 +216,11 @@ RECALLED    → STORED       (WAREHOUSE collects recalled goods — reverse logi
 ### 5.3 Transition Matrix (constructor)
 
 ```solidity
-mapping(Status => mapping(Status => bool)) public allowedTransitions;
+mapping(Status => mapping(Status => bool)) private allowedTransitions;
 ```
 
-Initialised in constructor. Every lifecycle function calls:
+Initialised in constructor and never mutated. Private — the mapping encodes business logic,
+not configurable state. Every lifecycle function calls via `_transition()`:
 ```solidity
 if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch.status, newStatus);
 ```
@@ -281,14 +282,15 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 
 ### Lifecycle Domain
 
-| Function | Access | Transition |
+| Function | Access | Description |
 |---|---|---|
-| `receiveBatch(serial, location)` | onlyWarehouse | PRODUCED/IN_TRANSIT/RECALLED → STORED |
-| `shipBatch(serial, location)` | onlyTransporter | PRODUCED/STORED → IN_TRANSIT |
-| `distributeBatch(serial, location)` | onlyDistributor | STORED/IN_TRANSIT → DISTRIBUTED (blocked if recalled) |
-| `recallBatch(serial, location)` | onlyAuditor | DISTRIBUTED → RECALLED, sets recalled=true |
-| `certifyBatch(serial)` | onlyAuditor | Sets certified=true |
-| `disposeBatch(serial, location)` | onlyWarehouse | STORED → DISPOSED (requires recalled=true) |
+| `transferCustody(serial, newHolder)` | any registered user (must be currentHolder) | Explicitly hands custody to the next actor; required before any lifecycle call |
+| `receiveBatch(serial, location)` | onlyWarehouse (must be currentHolder) | PRODUCED/IN_TRANSIT/RECALLED → STORED |
+| `shipBatch(serial, location)` | onlyTransporter (must be currentHolder) | PRODUCED/STORED → IN_TRANSIT |
+| `distributeBatch(serial, location)` | onlyDistributor (must be currentHolder) | STORED/IN_TRANSIT → DISTRIBUTED (blocked if recalled) |
+| `recallBatch(serial, location)` | onlyAuditor | any → RECALLED, sets recalled=true permanently; auditor becomes currentHolder |
+| `certifyBatch(serial)` | onlyAuditor | Sets certified=true (batch must be DISTRIBUTED) |
+| `disposeBatch(serial, location)` | onlyWarehouse (must be currentHolder) | STORED → DISPOSED (requires recalled=true) |
 
 ### View Domain
 
@@ -322,14 +324,25 @@ correct role. Reverts with `Unauthorized()` on failure.
 error ZeroAddress();
 error AlreadyRegistered();
 error NotRegistered();
+error SelfDeactivation();       // admin cannot deactivate themselves
 error Unauthorized();
 error BatchNotFound();
 error DuplicateSerial();
-error InvalidProductType();   // productTypeId >= productTypeCount
-error InvalidUnit();           // unitId >= unitCount
+error InvalidSerialNumber();    // zero bytes32
+error InvalidQuantity();        // zero quantity
+error InvalidOrigin();          // zero bytes32
+error InvalidExpiryDate();      // expiry already in the past
+error InvalidProductType();     // productTypeId >= productTypeCount
+error InvalidUnit();            // unitId >= unitCount
+error DuplicateProductType();
+error DuplicateUnit();
+error NotCurrentHolder();       // caller is not the currentHolder
+error BatchExpired();           // expiry enforced on forward commerce transitions
 error InvalidTransition(Status from, Status to);
 error CannotDistributeRecalled();
 error BatchNotRecalled();
+error AlreadyCertified();
+error CannotCertifyInStatus(Status current);
 ```
 
 **Trust boundaries and input validation.** The `PRODUCER` role is trusted for *intent*
@@ -377,6 +390,12 @@ event BatchCertified(
 event BatchRecalled(
     bytes32 indexed serialNumber,
     address indexed auditor
+);
+
+event CustodyTransferred(
+    bytes32 indexed serialNumber,
+    address indexed from,
+    address indexed to
 );
 ```
 
@@ -476,6 +495,17 @@ actions: connect(), disconnect()
 - Deactivated users are fully locked out — no role check passes
 - Transition matrix enforced on every lifecycle call
 
+### Chain-of-Custody Enforcement
+- `currentHolder` is tracked on every `Batch` struct
+- `transferCustody(serial, newHolder)` is the only way to change holder — requires caller == currentHolder
+- Every lifecycle function (`shipBatch`, `receiveBatch`, `distributeBatch`, `disposeBatch`) also asserts `currentHolder == msg.sender` before transitioning
+- `recallBatch` is exempt — auditor override; after the call the auditor becomes currentHolder, then must call `transferCustody` to a warehouse before the warehouse can dispose
+
+### Expiry Enforcement
+- `_transition()` checks `expiryDate` before every state change
+- Blocked for forward commerce: if `expiryDate != 0 && expiryDate < block.timestamp` and the transition is not part of reverse logistics
+- Exempt for reverse logistics: any transition to `RECALLED`, any transition to `DISPOSED`, and any transition originating from `RECALLED` status (so quarantined goods can still be received into storage)
+
 ### Recall Protection
 - `recalled=true` is set atomically in `recallBatch` and never unset
 - `distributeBatch` explicitly checks `if (batch.recalled) revert CannotDistributeRecalled()`
@@ -513,38 +543,39 @@ Expected findings to verify:
 
 ### Minimum 10 Batches
 
-| Serial | Product Type | Category | Status |
+| Serial | Product Type | Category | Final Status |
 |---|---|---|---|
-| OLIVE-GR-001 | FOOD | PERISHABLE | full workflow |
-| PHARMA-DE-001 | PHARMA | REFRIGERATED | full workflow with recall |
-| STEEL-DE-001 | INDUSTRIAL | NON_PERISHABLE | STORED |
-| COTTON-EG-001 | TEXTILE | NON_PERISHABLE | IN_TRANSIT |
-| CHIP-TW-001 | ELECTRONICS | FRAGILE | PRODUCED |
-| ACID-CN-001 | CHEMICAL | HAZARDOUS | STORED |
-| GRAIN-UA-001 | AGRICULTURE | PERISHABLE | DISTRIBUTED |
-| MOTOR-JP-001 | INDUSTRIAL | NON_PERISHABLE | IN_TRANSIT |
-| VACCINE-US-001 | PHARMA | REFRIGERATED | STORED |
-| WINE-FR-001 | FOOD | PERISHABLE | DISTRIBUTED |
+| OLIVE-GR-001 | FOOD | PERISHABLE | DISTRIBUTED + certified (Route 1) |
+| PHARMA-GR-001 | PHARMA | REFRIGERATED | DISPOSED after recall (Route 2) |
+| WINE-GR-001 | FOOD | NON_PERISHABLE | STORED |
+| HONEY-GR-001 | FOOD | NON_PERISHABLE | STORED |
+| VACCINE-GR-001 | PHARMA | REFRIGERATED | STORED |
+| AGRI-GR-001 | AGRICULTURE | PERISHABLE | IN_TRANSIT |
+| STEEL-GR-001 | INDUSTRIAL | NON_PERISHABLE | DISTRIBUTED + certified |
+| ELEC-GR-001 | ELECTRONICS | FRAGILE | PRODUCED |
+| TEXT-GR-001 | TEXTILE | NON_PERISHABLE | PRODUCED |
+| CHEM-GR-001 | CHEMICAL | HAZARDOUS | PRODUCED |
 
 ### Workflow 1 — Normal forward chain (olive oil)
 ```
-OLIVE-GR-001: PRODUCED (Athens, Producer)
-           → STORED       (Athens Warehouse, location: "Athens Cold Hub")
-           → IN_TRANSIT   (Piraeus Port, location: "Piraeus Port")
-           → STORED       (Hamburg Hub, location: "Hamburg Warehouse")
-           → IN_TRANSIT   (Final truck, location: "Hamburg → Berlin")
-           → DISTRIBUTED  (Berlin Supermarket, location: "Berlin Retail")
+OLIVE-GR-001: PRODUCED
+           → STORED       (WH-KALAMATA — origin warehouse)
+           → IN_TRANSIT   (TRUCK-001   — first leg)
+           → STORED       (WH-ATHENS   — hub warehouse)
+           → IN_TRANSIT   (TRUCK-002   — final leg)
+           → DISTRIBUTED  (DIST-PIR)
+           → certified    (auditor certifies after successful delivery)
 ```
 
 ### Workflow 2 — Recall + reverse logistics (pharma)
 ```
-PHARMA-DE-001: PRODUCED   (Frankfurt, Producer)
-            → STORED      (Frankfurt Pharma Hub)
-            → IN_TRANSIT  (Air freight)
-            → DISTRIBUTED (Athens Pharmacy)
+PHARMA-GR-001: PRODUCED
+            → STORED      (WH-ATHENS)
+            → IN_TRANSIT  (TRUCK-PHARMA)
+            → DISTRIBUTED (DIST-ATH)
             → RECALLED    (Auditor: contamination found)
-            → STORED      (Athens Returns Warehouse)
-            → DISPOSED    (Disposal facility)
+            → STORED      (WH-QUARANTINE — auditor transfers custody to warehouse)
+            → DISPOSED    (warehouse disposes recalled goods)
 ```
 
 ---
@@ -572,14 +603,14 @@ MetaMask configuration:
 
 ## 13. Deliverables Checklist
 
-- [ ] `contracts/src/DataTypes.sol` — enums + structs
-- [ ] `contracts/src/ITrustChain.sol` — interface (events + errors + function signatures)
-- [ ] `contracts/src/TrustChain.sol` — main contract with comments
-- [ ] `contracts/test/TrustChain.t.sol` — Forge test suite (all green)
-- [ ] `contracts/script/Deploy.s.sol` — deployment script
+- [x] `contracts/src/DataTypes.sol` — enums + structs
+- [x] `contracts/src/ITrustChain.sol` — interface (events + errors + function signatures)
+- [x] `contracts/src/TrustChain.sol` — main contract (106 tests passing)
+- [x] `contracts/test/TrustChain.t.sol` — Forge test suite (unit + fuzz + invariant + e2e, all green)
+- [x] `contracts/script/Deploy.s.sol` — deployment script (10 batches, 2 complete routes)
 - [ ] `ui/` — complete Vue 3 frontend
-- [ ] `.devcontainer/` — VS Code dev container
-- [ ] Slither + Solhint audit run, findings documented
-- [ ] 10+ batches registered in demo
-- [ ] 2 complete end-to-end workflows demonstrated
+- [x] `.devcontainer/` — VS Code dev container
+- [x] Slither + Solhint audit run, findings documented
+- [x] 10+ batches registered in demo
+- [x] 2 complete end-to-end workflows demonstrated
 - [ ] PDF report with architecture, screenshots, security audit findings

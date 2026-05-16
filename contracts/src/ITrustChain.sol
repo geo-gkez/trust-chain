@@ -22,6 +22,7 @@ interface ITrustChain {
 
     event BatchCertified(bytes32 indexed serialNumber, address indexed auditor);
     event BatchRecalled(bytes32 indexed serialNumber, address indexed auditor);
+    event CustodyTransferred(bytes32 indexed serialNumber, address indexed from, address indexed to);
 
     // ── Custom Errors ───────────────────────────────────────────────────
 
@@ -40,6 +41,8 @@ interface ITrustChain {
     error InvalidTransition(Status from, Status to);
     error CannotDistributeRecalled();
     error BatchNotRecalled();
+    error NotCurrentHolder();
+    error BatchExpired();
     error SelfDeactivation();
     error CannotCertifyInStatus(Status status);
     error AlreadyCertified();
@@ -68,6 +71,7 @@ interface ITrustChain {
 
     // ── Lifecycle Domain ────────────────────────────────────────────────
 
+    function transferCustody(bytes32 serialNumber, address newHolder) external;
     function receiveBatch(bytes32 serialNumber, bytes32 location) external;
     function shipBatch(bytes32 serialNumber, bytes32 location) external;
     function distributeBatch(bytes32 serialNumber, bytes32 location) external;
