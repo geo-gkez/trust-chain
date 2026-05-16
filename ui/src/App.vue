@@ -9,9 +9,7 @@
         <span class="font-weight-bold">TrustChain</span>
       </v-app-bar-title>
       <v-spacer />
-      <v-btn color="primary" variant="tonal" class="mr-2">
-        Connect Wallet
-      </v-btn>
+      <WalletConnect class="mr-2" />
     </v-app-bar>
 
     <!-- ── Side Drawer ──────────────────────────────────────────────── -->
@@ -56,6 +54,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useToastStore } from '@/stores/toast'
+import WalletConnect from '@/components/common/WalletConnect.vue'
 
 const drawer = ref(false)
 const toast  = useToastStore()
