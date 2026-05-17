@@ -94,7 +94,33 @@
       </v-window>
     </template>
 
-    <!-- Not an admin -->
+    <!-- Producer panel (temporary test area) -->
+    <template v-else-if="roleLabel === 'PRODUCER'">
+      <v-tabs v-model="producerTab" color="primary" class="mb-4">
+        <v-tab value="create">Create Batch</v-tab>
+        <v-tab value="mybatches">My Batches</v-tab>
+      </v-tabs>
+      <v-window v-model="producerTab">
+        <v-window-item value="create">
+          <v-card max-width="600" class="pa-6">
+            <v-card-title class="mb-4">Create New Batch</v-card-title>
+            <BatchForm @created="loadMyBatches" />
+          </v-card>
+        </v-window-item>
+        <v-window-item value="mybatches">
+          <v-row>
+            <v-col v-for="b in myBatches" :key="b.serialNumber" cols="12" md="6">
+              <BatchCard :batch="b" />
+            </v-col>
+            <v-col v-if="myBatches.length === 0" cols="12">
+              <v-alert type="info" variant="tonal">No batches yet.</v-alert>
+            </v-col>
+          </v-row>
+        </v-window-item>
+      </v-window>
+    </template>
+
+    <!-- Other roles -->
     <v-alert v-else type="info" variant="tonal">
       Role-specific panels coming soon.
     </v-alert>
@@ -108,11 +134,20 @@ import { useAdmin } from '@/composables/useAdmin'
 import { useUserRole, ROLES, ROLE_COLORS } from '@/composables/useUserRole'
 import { useBatches } from '@/composables/useBatches'
 import { useToastStore } from '@/stores/toast'
-import UserForm from '@/components/admin/UserForm.vue'
+import UserForm  from '@/components/admin/UserForm.vue'
+import BatchForm from '@/components/batch/BatchForm.vue'
+import BatchCard from '@/components/batch/BatchCard.vue'
 
 const { fetchAllUsers, deactivateUser, activateUser,
         getProductTypes, getUnits, addProductType, addUnit } = useAdmin()
-const { fetchAllBatches } = useBatches()
+const { fetchAllBatches, fetchMyBatches } = useBatches()
+
+const producerTab = ref('create')
+const myBatches   = ref([])
+
+async function loadMyBatches() {
+  myBatches.value = await fetchMyBatches()
+}
 const { roleLabel } = useUserRole()
 const toast = useToastStore()
 
@@ -211,7 +246,6 @@ onMounted(async () => {
   await loadUsers()
   productTypes.value = await getProductTypes()
   units.value        = await getUnits()
-  const batches = await fetchAllBatches()
-  console.log('fetchAllBatches() →', batches)
+  if (roleLabel.value === 'PRODUCER') await loadMyBatches()
 })
 </script>
