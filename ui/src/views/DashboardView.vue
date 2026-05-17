@@ -106,11 +106,13 @@
 import { ref, onMounted } from 'vue'
 import { useAdmin } from '@/composables/useAdmin'
 import { useUserRole, ROLES, ROLE_COLORS } from '@/composables/useUserRole'
+import { useBatches } from '@/composables/useBatches'
 import { useToastStore } from '@/stores/toast'
 import UserForm from '@/components/admin/UserForm.vue'
 
 const { fetchAllUsers, deactivateUser, activateUser,
         getProductTypes, getUnits, addProductType, addUnit } = useAdmin()
+const { fetchAllBatches } = useBatches()
 const { roleLabel } = useUserRole()
 const toast = useToastStore()
 
@@ -209,5 +211,7 @@ onMounted(async () => {
   await loadUsers()
   productTypes.value = await getProductTypes()
   units.value        = await getUnits()
+  const batches = await fetchAllBatches()
+  console.log('fetchAllBatches() →', batches)
 })
 </script>
