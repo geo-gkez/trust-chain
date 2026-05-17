@@ -22,16 +22,14 @@
       />
       <v-divider />
       <v-list density="compact" nav>
-        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" />
-        <v-list-item prepend-icon="mdi-magnify"        title="Search" />
+        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" to="/dashboard" @click="drawer = false" />
+        <v-list-item prepend-icon="mdi-magnify"        title="Search"    to="/search"    @click="drawer = false" />
       </v-list>
     </v-navigation-drawer>
 
     <!-- ── Main Content ─────────────────────────────────────────────── -->
     <v-main>
-      <v-container class="py-8">
-        <h2>Welcome — content goes here</h2>
-      </v-container>
+      <router-view />
     </v-main>
 
     <!-- ── Global Toast ─────────────────────────────────────────────── -->
