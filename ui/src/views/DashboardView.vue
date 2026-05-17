@@ -191,8 +191,19 @@
       </v-window>
     </template>
 
-    <!-- Not yet loaded -->
-    <v-progress-circular v-else-if="!roleLabel" indeterminate color="primary" />
+    <!-- Still loading role -->
+    <v-progress-circular v-else-if="isLoading" indeterminate color="primary" />
+
+    <!-- Connected but not registered -->
+    <v-alert
+      v-else
+      type="warning"
+      variant="tonal"
+      icon="mdi-account-off"
+      max-width="480"
+    >
+      This address is not registered in TrustChain. Ask an admin to register you.
+    </v-alert>
 
   </v-container>
 </template>
@@ -219,7 +230,7 @@ const {
   receiveBatch, shipBatch, distributeBatch,
   recallBatch, disposeBatch, certifyBatch,
 } = useBatches()
-const { roleLabel } = useUserRole()
+const { roleLabel, isLoading } = useUserRole()
 const toast = useToastStore()
 
 // ── Shared state ──────────────────────────────────────────────────────────

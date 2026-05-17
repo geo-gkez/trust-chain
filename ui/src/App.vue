@@ -28,6 +28,20 @@
       </v-list>
     </v-navigation-drawer>
 
+    <!-- ── Wallet Error Banner ────────────────────────────────────────── -->
+    <v-banner
+      v-if="wallet.error"
+      color="error"
+      icon="mdi-alert-circle"
+      lines="one"
+      sticky
+    >
+      {{ wallet.error }}
+      <template #actions>
+        <v-btn variant="text" size="small" @click="wallet.error = null">Dismiss</v-btn>
+      </template>
+    </v-banner>
+
     <!-- ── Main Content ─────────────────────────────────────────────── -->
     <v-main>
       <router-view />
@@ -53,9 +67,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useToastStore } from '@/stores/toast'
+import { useWalletStore } from '@/stores/wallet'
 import WalletConnect from '@/components/common/WalletConnect.vue'
 import RoleBadge from '@/components/common/RoleBadge.vue'
 
 const drawer = ref(false)
 const toast  = useToastStore()
+const wallet = useWalletStore()
 </script>

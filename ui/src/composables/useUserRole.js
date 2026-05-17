@@ -41,6 +41,7 @@ export function useUserRole() {
     isLoading.value = true
     try {
       const user = await wallet.contract.getUser(wallet.account)
+      if (!user.isActive) { roleIndex.value = null; return }
       roleIndex.value = Number(user.role)
       userName.value  = decodeBytes32String(user.name)
     } catch {
