@@ -74,6 +74,24 @@ export function useAdmin() {
     }
   }
 
+  async function addProductType(name) {
+    try {
+      const tx = await wallet.contract.addProductType(name)
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  async function addUnit(name) {
+    try {
+      const tx = await wallet.contract.addUnit(name)
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
   return {
     getProductTypes,
     getUnits,
@@ -81,5 +99,7 @@ export function useAdmin() {
     registerUser,
     deactivateUser,
     activateUser,
+    addProductType,
+    addUnit,
   }
 }
