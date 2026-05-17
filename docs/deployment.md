@@ -4,6 +4,22 @@ This guide covers deploying TrustChain to a local Anvil node (development) and t
 
 ---
 
+## Dev Container (VS Code)
+
+If you have [VS Code](https://code.visualstudio.com/) and [Docker](https://www.docker.com/), this is the fastest path — no local tool installation required.
+
+1. Open the repository folder in VS Code.
+2. When prompted, click **Reopen in Container** (or open the command palette and run `Dev Containers: Reopen in Container`).
+3. Wait for the container to build — it installs Foundry, Node.js 24, Slither, and solhint automatically.
+
+Ports `8545` (Anvil) and `5173` (Vite) are forwarded to your host, so MetaMask connects to `http://127.0.0.1:8545` just as in a local setup.
+
+Once the container is ready, skip the Prerequisites section below and continue from [Local Development (Anvil)](#local-development-anvil).
+
+> **MetaMask note:** MetaMask runs in your host browser and connects via the forwarded port — no special configuration needed inside the container.
+
+---
+
 ## Prerequisites
 
 ### Foundry

@@ -58,7 +58,11 @@ The system uses a Solidity smart contract as the single source of truth. Every c
 
 ## Quick Start
 
-> **Prerequisites:** [Foundry](https://book.getfoundry.sh/getting-started/installation) installed, Node.js 18+, MetaMask browser extension.
+**Dev Container (VS Code + Docker):** After cloning, open the repo in VS Code and select **Reopen in Container** — Foundry, Node.js, Slither, and solhint install automatically inside the container. Ports `8545` and `5173` are forwarded to your host, so MetaMask connects to `localhost` as normal. Then follow steps 2–5 below.
+
+**Without Dev Container:** Install [Foundry](https://book.getfoundry.sh/getting-started/installation) and Node.js 18+ on your machine, then follow all steps below.
+
+> MetaMask browser extension is required in both cases.
 
 ```bash
 # 1. Clone and enter the repo
