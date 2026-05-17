@@ -74,13 +74,15 @@ anvil
 # 4. Deploy the contract with demo data (new terminal, still in contracts/)
 forge script script/Deploy.s.sol --broadcast --rpc-url http://127.0.0.1:8545
 
-# 5. Copy the deployed contract address from the output, then start the UI
+# 5. Start the UI — contract address is already set in .env.example
 cd ../ui
-echo "VITE_CONTRACT_ADDRESS=<address-from-step-4>" > .env
+cp .env.example .env
 npm install && npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) and connect MetaMask to the Anvil network (Chain ID `31337`, RPC `http://127.0.0.1:8545`).
+
+> The contract address (`0x5FbDB2315678afecb367f032d93F642f64180aa3`) is deterministic — deploying from Anvil account 0 at nonce 0 always produces the same address, so no manual copy-paste is needed.
 
 See [docs/deployment.md](docs/deployment.md) for full instructions including testnet deployment.
 

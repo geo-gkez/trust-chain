@@ -73,16 +73,14 @@ At the end of the output you will see:
 === TrustChain deployed at: 0x5FbDB2315678afecb367f032d93F642f64180aa3 ===
 ```
 
-Copy that address — you need it in the next step.
-
 ### 4. Configure the frontend
 
 ```bash
 cd ../ui
-echo "VITE_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3" > .env
+cp .env.example .env
 ```
 
-Replace the address with the one printed in step 3. The contract address changes every time you redeploy.
+The `.env.example` already contains the correct address (`0x5FbDB2315678afecb367f032d93F642f64180aa3`). This is deterministic — deploying from Anvil account 0 at nonce 0 always produces the same address on a fresh Anvil instance.
 
 ### 5. Start the dev server
 
