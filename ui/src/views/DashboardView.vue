@@ -1,19 +1,19 @@
 <template>
   <v-container class="py-8">
     <h2>Dashboard</h2>
-    <p class="mt-4 text-medium-emphasis">Product types: {{ productTypes }}</p>
+    <p class="mt-4 text-medium-emphasis">Users: {{ users }}</p>
   </v-container>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useWalletStore } from '@/stores/wallet'
+import { useAdmin } from '@/composables/useAdmin'
 
-const wallet       = useWalletStore()
-const productTypes = ref([])
+const { fetchAllUsers } = useAdmin()
+const users = ref([])
 
 onMounted(async () => {
-  productTypes.value = await wallet.contract.getProductTypes()
-  console.log('getProductTypes() →', productTypes.value)
+  users.value = await fetchAllUsers()
+  console.log('fetchAllUsers() →', users.value)
 })
 </script>
