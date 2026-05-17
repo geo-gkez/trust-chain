@@ -9,6 +9,7 @@
         <span class="font-weight-bold">TrustChain</span>
       </v-app-bar-title>
       <v-spacer />
+      <RoleBadge class="mr-3" />
       <WalletConnect class="mr-2" />
     </v-app-bar>
 
@@ -53,6 +54,7 @@
 import { ref } from 'vue'
 import { useToastStore } from '@/stores/toast'
 import WalletConnect from '@/components/common/WalletConnect.vue'
+import RoleBadge from '@/components/common/RoleBadge.vue'
 
 const drawer = ref(false)
 const toast  = useToastStore()
