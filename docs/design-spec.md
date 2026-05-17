@@ -1,8 +1,6 @@
 # TrustChain — Supply Chain Traceability System
 ## Design Specification
 
-**Course:** Advanced Cryptographic and Security Technologies  
-**Date:** 2026-04-15  
 **Tech Stack:** Solidity 0.8.28 · Foundry · Vue 3 · Vuetify 4 · Pinia · ethers.js v6 · Anvil
 
 ---
@@ -304,7 +302,7 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 
 ## 7. Modifiers and Errors
 
-### Named Modifiers (assignment requirement)
+### Named Modifiers
 
 ```solidity
 modifier onlyAdmin()       { _requireRole(msg.sender, Role.ADMIN);       _; }
@@ -539,22 +537,10 @@ Expected findings to verify:
 
 ---
 
-## 11. Test Data Requirements
+## 11. Example Workflows
 
-### Minimum 10 Batches
-
-| Serial | Product Type | Category | Final Status |
-|---|---|---|---|
-| OLIVE-GR-001 | FOOD | PERISHABLE | DISTRIBUTED + certified (Route 1) |
-| PHARMA-GR-001 | PHARMA | REFRIGERATED | DISPOSED after recall (Route 2) |
-| WINE-GR-001 | FOOD | NON_PERISHABLE | STORED |
-| HONEY-GR-001 | FOOD | NON_PERISHABLE | STORED |
-| VACCINE-GR-001 | PHARMA | REFRIGERATED | STORED |
-| AGRI-GR-001 | AGRICULTURE | PERISHABLE | IN_TRANSIT |
-| STEEL-GR-001 | INDUSTRIAL | NON_PERISHABLE | DISTRIBUTED + certified |
-| ELEC-GR-001 | ELECTRONICS | FRAGILE | PRODUCED |
-| TEXT-GR-001 | TEXTILE | NON_PERISHABLE | PRODUCED |
-| CHEM-GR-001 | CHEMICAL | HAZARDOUS | PRODUCED |
+Two concrete paths through the state machine, both seeded by the deploy script.
+See [deployment.md](deployment.md#what-the-deploy-script-creates) for the full demo dataset.
 
 ### Workflow 1 — Normal forward chain (olive oil)
 ```
@@ -582,35 +568,4 @@ PHARMA-GR-001: PRODUCED
 
 ## 12. Deployment
 
-Local development against Anvil:
-```bash
-# Terminal 1 — start local blockchain
-anvil
-
-# Terminal 2 — deploy contract
-cd contracts && forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
-
-# Terminal 3 — start frontend
-cd ui && npm run dev
-```
-
-MetaMask configuration:
-- Network: Localhost 8545
-- Chain ID: 31337
-- Use Anvil's pre-funded accounts for testing
-
----
-
-## 13. Deliverables Checklist
-
-- [x] `contracts/src/DataTypes.sol` — enums + structs
-- [x] `contracts/src/ITrustChain.sol` — interface (events + errors + function signatures)
-- [x] `contracts/src/TrustChain.sol` — main contract (106 tests passing)
-- [x] `contracts/test/TrustChain.t.sol` — Forge test suite (unit + fuzz + invariant + e2e, all green)
-- [x] `contracts/script/Deploy.s.sol` — deployment script (10 batches, 2 complete routes)
-- [ ] `ui/` — complete Vue 3 frontend
-- [x] `.devcontainer/` — VS Code dev container
-- [x] Slither + Solhint audit run, findings documented
-- [x] 10+ batches registered in demo
-- [x] 2 complete end-to-end workflows demonstrated
-- [ ] PDF report with architecture, screenshots, security audit findings
+See [deployment.md](deployment.md) for local (Anvil) and Sepolia testnet deployment instructions.
