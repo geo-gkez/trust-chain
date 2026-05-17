@@ -10,8 +10,9 @@
       <!-- Created -->
       <template v-if="entry.type === 'created'">
         <div class="text-body-2 font-weight-bold">Batch Created</div>
-        <div class="text-caption text-medium-emphasis">
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
           Producer: {{ short(entry.producer) }}
+          <v-btn icon="mdi-content-copy" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.producer)" />
         </div>
         <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
       </template>
@@ -26,8 +27,9 @@
         <div v-if="entry.location" class="text-caption text-medium-emphasis">
           Location: {{ entry.location }}
         </div>
-        <div class="text-caption text-medium-emphasis">
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
           Actor: {{ short(entry.actor) }}
+          <v-btn icon="mdi-content-copy" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.actor)" />
         </div>
         <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
       </template>
@@ -35,8 +37,21 @@
       <!-- Custody transfer -->
       <template v-else-if="entry.type === 'transferred'">
         <div class="text-body-2 font-weight-bold">Custody Transfer</div>
-        <div class="text-caption text-medium-emphasis">
-          {{ short(entry.from) }} → {{ short(entry.to) }}
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          {{ short(entry.from) }}
+          <v-btn icon="mdi-content-copy" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.from)" />
+          → {{ short(entry.to) }}
+          <v-btn icon="mdi-content-copy" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.to)" />
+        </div>
+        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+      </template>
+
+      <!-- Certified -->
+      <template v-else-if="entry.type === 'certified'">
+        <div class="text-body-2 font-weight-bold">Batch Certified</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Auditor: {{ short(entry.auditor) }}
+          <v-btn icon="mdi-content-copy" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.auditor)" />
         </div>
         <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
       </template>
@@ -48,10 +63,19 @@
 
 <script setup>
 import { STATUS_COLORS } from '@/composables/useBatches'
+import { useToastStore } from '@/stores/toast'
 
 defineProps({
   entries: { type: Array, default: () => [] },
 })
+
+const toast = useToastStore()
+
+async function copy(addr) {
+  if (!addr) return
+  await navigator.clipboard.writeText(addr)
+  toast.show('Address copied.', 'success')
+}
 
 function short(addr) {
   if (!addr) return '—'
@@ -65,6 +89,7 @@ function statusColor(label) {
 function dotColor(entry) {
   if (entry.type === 'created')     return 'green'
   if (entry.type === 'transferred') return 'orange'
+  if (entry.type === 'certified')   return 'teal'
   return 'primary'
 }
 </script>

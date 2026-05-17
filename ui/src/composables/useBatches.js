@@ -199,10 +199,11 @@ export function useBatches() {
   async function fetchBatchTimeline(serial) {
     const s = toBytes32(serial)
 
-    const [created, transitioned, transferred] = await Promise.all([
+    const [created, transitioned, transferred, certified] = await Promise.all([
       wallet.contract.queryFilter(wallet.contract.filters.BatchCreated(s)),
       wallet.contract.queryFilter(wallet.contract.filters.BatchTransitioned(s)),
       wallet.contract.queryFilter(wallet.contract.filters.CustodyTransferred(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.BatchCertified(s)),
     ])
 
     const entries = [
@@ -224,6 +225,11 @@ export function useBatches() {
         block: e.blockNumber,
         from:  e.args.from,
         to:    e.args.to,
+      })),
+      ...certified.map(e => ({
+        type:    'certified',
+        block:   e.blockNumber,
+        auditor: e.args.auditor,
       })),
     ]
 
