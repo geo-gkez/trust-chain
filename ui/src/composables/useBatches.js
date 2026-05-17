@@ -196,11 +196,46 @@ export function useBatches() {
     }
   }
 
+  async function fetchBatchTimeline(serial) {
+    const s = toBytes32(serial)
+
+    const [created, transitioned, transferred] = await Promise.all([
+      wallet.contract.queryFilter(wallet.contract.filters.BatchCreated(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.BatchTransitioned(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.CustodyTransferred(s)),
+    ])
+
+    const entries = [
+      ...created.map(e => ({
+        type:     'created',
+        block:    e.blockNumber,
+        producer: e.args.producer,
+      })),
+      ...transitioned.map(e => ({
+        type:     'transitioned',
+        block:    e.blockNumber,
+        from:     STATUSES[Number(e.args.from)],
+        to:       STATUSES[Number(e.args.to)],
+        location: fromBytes32(e.args.location),
+        actor:    e.args.by,
+      })),
+      ...transferred.map(e => ({
+        type:  'transferred',
+        block: e.blockNumber,
+        from:  e.args.from,
+        to:    e.args.to,
+      })),
+    ]
+
+    return entries.sort((a, b) => a.block - b.block)
+  }
+
   return {
     fetchBatch,
     fetchMyBatches,
     fetchAllBatches,
     fetchHeldBatches,
+    fetchBatchTimeline,
     createBatch,
     transferCustody,
     receiveBatch,

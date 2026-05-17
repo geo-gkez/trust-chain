@@ -7,6 +7,7 @@
       class="mb-2"
     />
     <v-text-field
+      v-if="hasLocation"
       v-model="location"
       label="Location"
       placeholder="GR-ATH-WAREHOUSE"
@@ -23,8 +24,9 @@ import { ref } from 'vue'
 import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
-  label: { type: String, default: 'Submit' },
-  fn:    { type: Function, required: true },
+  label:       { type: String,   default: 'Submit' },
+  fn:          { type: Function, required: true },
+  hasLocation: { type: Boolean,  default: true },
 })
 const emit = defineEmits(['done'])
 
