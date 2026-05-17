@@ -51,8 +51,9 @@ export function useUserRole() {
     }
   }
 
-  // Re-fetch whenever the wallet connection state changes
+  // Re-fetch on connect/disconnect and on account switch
   watch(() => wallet.isConnected, fetchRole, { immediate: true })
+  watch(() => wallet.account, () => { if (wallet.isConnected) fetchRole() })
 
   return { roleLabel, roleColor, userName, isLoading }
 }

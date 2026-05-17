@@ -74,9 +74,20 @@ export const useWalletStore = defineStore('wallet', {
         // 4. React to MetaMask events (only register once)
         if (!listenersRegistered) {
           listenersRegistered = true
-          window.ethereum.on('accountsChanged', (accs) => {
-            if (accs.length === 0) this.disconnect()
-            else { this.account = accs[0]; this.connect() }
+          window.ethereum.on('accountsChanged', async (accs) => {
+            if (accs.length === 0) {
+              this.disconnect()
+            } else {
+              this.account = accs[0]
+              try {
+                const signer = await this.provider.getSigner()
+                this.contract = markRaw(
+                  new Contract(CONTRACT_ADDRESS, TrustChainArtifact.abi, signer)
+                )
+              } catch {
+                this.error = 'Failed to update signer after account switch.'
+              }
+            }
           })
           window.ethereum.on('chainChanged', () => window.location.reload())
         }

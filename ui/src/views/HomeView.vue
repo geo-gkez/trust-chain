@@ -1,5 +1,5 @@
 <template>
-  <v-container class="py-16 text-center" style="max-width: 600px">
+  <v-container class="text-center d-flex flex-column align-center justify-center fill-height" style="max-width: 600px">
 
     <v-icon icon="mdi-link-variant" size="72" color="primary" class="mb-6" />
 

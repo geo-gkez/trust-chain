@@ -43,7 +43,7 @@
     </v-banner>
 
     <!-- ── Main Content ─────────────────────────────────────────────── -->
-    <v-main>
+    <v-main style="min-height: 100dvh">
       <router-view />
     </v-main>
 

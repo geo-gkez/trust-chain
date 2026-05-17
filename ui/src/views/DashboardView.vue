@@ -196,7 +196,7 @@
 
     <!-- Connected but not registered -->
     <v-alert
-      v-else
+      v-else-if="wallet.isConnected"
       type="warning"
       variant="tonal"
       icon="mdi-account-off"
@@ -210,10 +210,12 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAdmin } from '@/composables/useAdmin'
 import { useUserRole, ROLES, ROLE_COLORS } from '@/composables/useUserRole'
 import { useBatches } from '@/composables/useBatches'
 import { useToastStore } from '@/stores/toast'
+import { useWalletStore } from '@/stores/wallet'
 import UserForm       from '@/components/admin/UserForm.vue'
 import BatchForm      from '@/components/batch/BatchForm.vue'
 import BatchGrid      from '@/components/batch/BatchGrid.vue'
@@ -231,7 +233,14 @@ const {
   recallBatch, disposeBatch, certifyBatch,
 } = useBatches()
 const { roleLabel, isLoading } = useUserRole()
-const toast = useToastStore()
+const wallet = useWalletStore()
+const router = useRouter()
+const toast  = useToastStore()
+
+// Redirect to home when wallet disconnects
+watch(() => wallet.isConnected, (connected) => {
+  if (!connected) router.push('/')
+})
 
 // ── Shared state ──────────────────────────────────────────────────────────
 const tab           = ref(null)
