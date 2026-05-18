@@ -30,21 +30,20 @@ export function useAdmin() {
 
   async function fetchAllUsers() {
     const data = await gql(`{
-      users(first: 1000) {
-        id
+      userRegistereds(first: 1000) {
+        user
         name
         role
-        isActive
-        registeredAt
       }
     }`)
-    return data.users.map(u => ({
-      address:      u.id,
-      name:         u.name,
-      role:         Number(u.role),
-      isActive:     u.isActive,
-      registeredAt: Number(u.registeredAt),
-    }))
+    const addresses = [...new Set(data.userRegistereds.map(e => e.user))]
+    const users = await Promise.all(
+      addresses.map(async (addr) => {
+        const raw = await wallet.contract.getUser(addr)
+        return decodeUser(addr, raw)
+      })
+    )
+    return users
   }
 
   // ── Writes ─────────────────────────────────────────────────────────────

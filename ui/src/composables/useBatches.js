@@ -208,40 +208,46 @@ export function useBatches() {
 
     const data = await gql(`
       query($serial: Bytes!) {
-        batchCreateds(where: { serialNumber: $serial }) {
-          id
+        batchCreateds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
+          blockNumber
+          transactionHash
           producer
         }
-        batchTransitioneds(where: { serialNumber: $serial }) {
-          id
+        batchTransitioneds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
+          blockNumber
+          transactionHash
           from
           to
           by
           location
         }
-        custodyTransferreds(where: { serialNumber: $serial }) {
-          id
+        custodyTransferreds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
+          blockNumber
+          transactionHash
           from
           to
         }
-        batchCertifieds(where: { serialNumber: $serial }) {
-          id
+        batchCertifieds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
+          blockNumber
+          transactionHash
           auditor
         }
       }
     `, { serial: s })
 
-    const idToBlock = (id) => Number(id.split('-')[1] ?? 0)
+    const key = e => Number(e.blockNumber) * 1e6 + parseInt(e.transactionHash.slice(-6), 16)
 
     const entries = [
       ...data.batchCreateds.map(e => ({
         type:     'created',
-        block:    idToBlock(e.id),
+        _key:     key(e),
+        block:    Number(e.blockNumber),
         producer: e.producer,
       })),
       ...data.batchTransitioneds.map(e => ({
         type:     'transitioned',
-        block:    idToBlock(e.id),
+        _key:     key(e),
+        block:    Number(e.blockNumber),
         from:     STATUSES[Number(e.from)],
         to:       STATUSES[Number(e.to)],
         location: fromBytes32(e.location),
@@ -249,18 +255,20 @@ export function useBatches() {
       })),
       ...data.custodyTransferreds.map(e => ({
         type:  'transferred',
-        block: idToBlock(e.id),
+        _key:  key(e),
+        block: Number(e.blockNumber),
         from:  e.from,
         to:    e.to,
       })),
       ...data.batchCertifieds.map(e => ({
         type:    'certified',
-        block:   idToBlock(e.id),
+        _key:    key(e),
+        block:   Number(e.blockNumber),
         auditor: e.auditor,
       })),
     ]
 
-    return entries.sort((a, b) => a.block - b.block)
+    return entries.sort((a, b) => a._key - b._key)
   }
 
   return {
