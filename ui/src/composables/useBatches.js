@@ -1,6 +1,7 @@
 import { encodeBytes32String, decodeBytes32String } from 'ethers'
 import { useWalletStore } from '@/stores/wallet'
 import { parseContractError } from '@/utils/contractErrors'
+import { gql } from '@/utils/graphql'
 
 // ── Enum maps ────────────────────────────────────────────────────────────────
 
@@ -83,10 +84,14 @@ export function useBatches() {
 
   // Batches created by the connected account
   async function fetchMyBatches() {
-    const events = await wallet.contract.queryFilter(
-      wallet.contract.filters.BatchCreated(null, wallet.account)
-    )
-    const serials = [...new Set(events.map(e => e.args.serialNumber))]
+    const data = await gql(`
+      query($producer: String!) {
+        batchCreateds(first: 1000, where: { producer: $producer }) {
+          serialNumber
+        }
+      }
+    `, { producer: wallet.account.toLowerCase() })
+    const serials = [...new Set(data.batchCreateds.map(e => e.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
       return decodeBatch(raw)
@@ -95,10 +100,12 @@ export function useBatches() {
 
   // All batches ever created (for auditor view)
   async function fetchAllBatches() {
-    const events = await wallet.contract.queryFilter(
-      wallet.contract.filters.BatchCreated()
-    )
-    const serials = [...new Set(events.map(e => e.args.serialNumber))]
+    const data = await gql(`{
+      batchCreateds(first: 1000) {
+        serialNumber
+      }
+    }`)
+    const serials = [...new Set(data.batchCreateds.map(e => e.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
       return decodeBatch(raw)
@@ -199,37 +206,57 @@ export function useBatches() {
   async function fetchBatchTimeline(serial) {
     const s = toBytes32(serial)
 
-    const [created, transitioned, transferred, certified] = await Promise.all([
-      wallet.contract.queryFilter(wallet.contract.filters.BatchCreated(s)),
-      wallet.contract.queryFilter(wallet.contract.filters.BatchTransitioned(s)),
-      wallet.contract.queryFilter(wallet.contract.filters.CustodyTransferred(s)),
-      wallet.contract.queryFilter(wallet.contract.filters.BatchCertified(s)),
-    ])
+    const data = await gql(`
+      query($serial: Bytes!) {
+        batchCreateds(where: { serialNumber: $serial }) {
+          id
+          producer
+        }
+        batchTransitioneds(where: { serialNumber: $serial }) {
+          id
+          from
+          to
+          by
+          location
+        }
+        custodyTransferreds(where: { serialNumber: $serial }) {
+          id
+          from
+          to
+        }
+        batchCertifieds(where: { serialNumber: $serial }) {
+          id
+          auditor
+        }
+      }
+    `, { serial: s })
+
+    const idToBlock = (id) => Number(id.split('-')[1] ?? 0)
 
     const entries = [
-      ...created.map(e => ({
+      ...data.batchCreateds.map(e => ({
         type:     'created',
-        block:    e.blockNumber,
-        producer: e.args.producer,
+        block:    idToBlock(e.id),
+        producer: e.producer,
       })),
-      ...transitioned.map(e => ({
+      ...data.batchTransitioneds.map(e => ({
         type:     'transitioned',
-        block:    e.blockNumber,
-        from:     STATUSES[Number(e.args.from)],
-        to:       STATUSES[Number(e.args.to)],
-        location: fromBytes32(e.args.location),
-        actor:    e.args.by,
+        block:    idToBlock(e.id),
+        from:     STATUSES[Number(e.from)],
+        to:       STATUSES[Number(e.to)],
+        location: fromBytes32(e.location),
+        actor:    e.by,
       })),
-      ...transferred.map(e => ({
+      ...data.custodyTransferreds.map(e => ({
         type:  'transferred',
-        block: e.blockNumber,
-        from:  e.args.from,
-        to:    e.args.to,
+        block: idToBlock(e.id),
+        from:  e.from,
+        to:    e.to,
       })),
-      ...certified.map(e => ({
+      ...data.batchCertifieds.map(e => ({
         type:    'certified',
-        block:   e.blockNumber,
-        auditor: e.args.auditor,
+        block:   idToBlock(e.id),
+        auditor: e.auditor,
       })),
     ]
 

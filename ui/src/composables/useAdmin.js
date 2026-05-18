@@ -1,6 +1,7 @@
 import { encodeBytes32String, decodeBytes32String } from 'ethers'
 import { useWalletStore } from '@/stores/wallet'
 import { parseContractError } from '@/utils/contractErrors'
+import { gql } from '@/utils/graphql'
 
 function decodeUser(address, raw) {
   return {
@@ -28,17 +29,22 @@ export function useAdmin() {
   // ── Events-as-discovery: fetch all registered users ────────────────────
 
   async function fetchAllUsers() {
-    const events = await wallet.contract.queryFilter(
-      wallet.contract.filters.UserRegistered()
-    )
-    const addresses = [...new Set(events.map(e => e.args.user))]
-    const users = await Promise.all(
-      addresses.map(async (addr) => {
-        const raw = await wallet.contract.getUser(addr)
-        return decodeUser(addr, raw)
-      })
-    )
-    return users
+    const data = await gql(`{
+      users(first: 1000) {
+        id
+        name
+        role
+        isActive
+        registeredAt
+      }
+    }`)
+    return data.users.map(u => ({
+      address:      u.id,
+      name:         u.name,
+      role:         Number(u.role),
+      isActive:     u.isActive,
+      registeredAt: Number(u.registeredAt),
+    }))
   }
 
   // ── Writes ─────────────────────────────────────────────────────────────
