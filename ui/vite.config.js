@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@trustchain-abi': fileURLToPath(new URL('../contracts/out/TrustChain.sol/TrustChain.json', import.meta.url)),
+      '@trustchain-abi': fileURLToPath(new URL('./src/abi/TrustChain.json', import.meta.url)),
     },
   },
   server: {
