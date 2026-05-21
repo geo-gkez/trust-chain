@@ -281,8 +281,8 @@ DA:174,5784
 FN:174,TrustChain.shipBatch
 FNDA:5784,TrustChain.shipBatch
 DA:175,5784
-DA:176,32
-BRDA:176,12,0,22
+DA:176,30
+BRDA:176,12,0,20
 DA:177,10
 DA:180,5748
 FN:180,TrustChain.distributeBatch
@@ -387,7 +387,7 @@ FN:283,TrustChain._requireBatch
 FNDA:64693,TrustChain._requireBatch
 DA:284,64693
 DA:285,64693
-BRDA:285,25,0,64357
+BRDA:285,25,0,64359
 DA:289,133
 FN:289,TrustChain._transition
 FNDA:133,TrustChain._transition
