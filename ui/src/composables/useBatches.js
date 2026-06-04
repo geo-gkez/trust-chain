@@ -85,7 +85,7 @@ export function useBatches() {
   // Batches created by the connected account
   async function fetchMyBatches() {
     const data = await gql(`
-      query($producer: String!) {
+      query($producer: Bytes!) {
         batchCreateds(first: 1000, where: { producer: $producer }) {
           serialNumber
         }
@@ -208,46 +208,44 @@ export function useBatches() {
 
     const data = await gql(`
       query($serial: Bytes!) {
-        batchCreateds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
-          blockNumber
-          transactionHash
+        batchCreateds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
           producer
         }
-        batchTransitioneds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
-          blockNumber
-          transactionHash
+        batchTransitioneds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
           from
           to
           by
           location
         }
-        custodyTransferreds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
-          blockNumber
-          transactionHash
+        custodyTransferreds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
           from
           to
         }
-        batchCertifieds(where: { serialNumber: $serial }, orderBy: blockNumber, orderDirection: asc) {
-          blockNumber
-          transactionHash
+        batchCertifieds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
           auditor
         }
       }
     `, { serial: s })
 
-    const key = e => Number(e.blockNumber) * 1e6 + parseInt(e.transactionHash.slice(-6), 16)
-
     const entries = [
       ...data.batchCreateds.map(e => ({
         type:     'created',
-        _key:     key(e),
-        block:    Number(e.blockNumber),
+        block:    Number(e.block_number),
+        tx:       e.transactionHash_,
         producer: e.producer,
       })),
       ...data.batchTransitioneds.map(e => ({
         type:     'transitioned',
-        _key:     key(e),
-        block:    Number(e.blockNumber),
+        block:    Number(e.block_number),
+        tx:       e.transactionHash_,
         from:     STATUSES[Number(e.from)],
         to:       STATUSES[Number(e.to)],
         location: fromBytes32(e.location),
@@ -255,20 +253,21 @@ export function useBatches() {
       })),
       ...data.custodyTransferreds.map(e => ({
         type:  'transferred',
-        _key:  key(e),
-        block: Number(e.blockNumber),
+        block: Number(e.block_number),
+        tx:    e.transactionHash_,
         from:  e.from,
         to:    e.to,
       })),
       ...data.batchCertifieds.map(e => ({
         type:    'certified',
-        _key:    key(e),
-        block:   Number(e.blockNumber),
+        block:   Number(e.block_number),
+        tx:      e.transactionHash_,
         auditor: e.auditor,
       })),
     ]
 
-    return entries.sort((a, b) => a._key - b._key)
+    // Chronological: by block, then by tx hash as a stable tiebreaker
+    return entries.sort((a, b) => a.block - b.block || a.tx.localeCompare(b.tx))
   }
 
   return {
