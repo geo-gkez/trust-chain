@@ -282,7 +282,9 @@ if (!allowedTransitions[batch.status][newStatus]) revert InvalidTransition(batch
 
 | Function | Access | Description |
 |---|---|---|
-| `transferCustody(serial, newHolder)` | any registered user (must be currentHolder) | Explicitly hands custody to the next actor; required before any lifecycle call |
+| `proposeCustody(serial, newHolder)` | active currentHolder | Step 1 of the handoff: offers custody to the next actor (custody does not move yet; sets `pendingHolder`) |
+| `acceptCustody(serial)` | active pendingHolder | Step 2: the proposed recipient accepts and custody moves |
+| `cancelCustody(serial)` | active currentHolder | Retracts a pending custody offer before it is accepted |
 | `receiveBatch(serial, location)` | onlyWarehouse (must be currentHolder) | PRODUCED/IN_TRANSIT/RECALLED → STORED |
 | `shipBatch(serial, location)` | onlyTransporter (must be currentHolder) | PRODUCED/STORED → IN_TRANSIT |
 | `distributeBatch(serial, location)` | onlyDistributor (must be currentHolder) | STORED/IN_TRANSIT → DISTRIBUTED (blocked if recalled) |
@@ -390,6 +392,24 @@ event BatchRecalled(
     address indexed auditor
 );
 
+event CustodyProposed(
+    bytes32 indexed serialNumber,
+    address indexed from,
+    address indexed to
+);
+
+event CustodyCancelled(
+    bytes32 indexed serialNumber,
+    address indexed from,
+    address indexed to
+);
+
+event CustodyDeclined(
+    bytes32 indexed serialNumber,
+    address indexed from,
+    address indexed to
+);
+
 event CustodyTransferred(
     bytes32 indexed serialNumber,
     address indexed from,
@@ -495,9 +515,10 @@ actions: connect(), disconnect()
 
 ### Chain-of-Custody Enforcement
 - `currentHolder` is tracked on every `Batch` struct
-- `transferCustody(serial, newHolder)` is the only way to change holder — requires caller == currentHolder
+- Changing holder is a two-phase handshake: `proposeCustody(serial, newHolder)` (caller must be the active currentHolder) then `acceptCustody(serial)` (caller must be the active pendingHolder). Custody only moves on accept. The handshake is symmetric: `cancelCustody` lets the holder retract a pending offer and `declineCustody` lets the proposed recipient reject it; any status transition also clears a stale offer.
+- Both legs assert the caller is active, so a deactivated holder can neither propose nor accept a handoff
 - Every lifecycle function (`shipBatch`, `receiveBatch`, `distributeBatch`, `disposeBatch`) also asserts `currentHolder == msg.sender` before transitioning
-- `recallBatch` is exempt — auditor override; after the call the auditor becomes currentHolder, then must call `transferCustody` to a warehouse before the warehouse can dispose
+- `recallBatch` is exempt from the handshake — auditor override; after the call the auditor becomes currentHolder, then proposes custody to a warehouse (which accepts) before the warehouse can dispose
 
 ### Expiry Enforcement
 - `_transition()` checks `expiryDate` before every state change

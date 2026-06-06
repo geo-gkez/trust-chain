@@ -1,4 +1,4 @@
-import { encodeBytes32String, decodeBytes32String } from 'ethers'
+import { encodeBytes32String, decodeBytes32String, ZeroAddress } from 'ethers'
 import { useWalletStore } from '@/stores/wallet'
 import { parseContractError } from '@/utils/contractErrors'
 
@@ -132,14 +132,78 @@ export function useBatches() {
     }
   }
 
-  // Step 1 of every handoff — transfer custody to the next actor
-  async function transferCustody(serial, newHolder) {
+  // Step 1 of a two-phase handoff — the current holder offers custody to the next actor.
+  // Custody does not move until the recipient calls acceptCustody.
+  async function proposeCustody(serial, newHolder) {
     try {
-      const tx = await wallet.contract.transferCustody(toBytes32(serial), newHolder)
+      const tx = await wallet.contract.proposeCustody(toBytes32(serial), newHolder)
       await tx.wait()
     } catch (err) {
       throw new Error(parseContractError(err))
     }
+  }
+
+  // Step 2 of a two-phase handoff — the proposed recipient accepts and custody moves.
+  async function acceptCustody(serial) {
+    try {
+      const tx = await wallet.contract.acceptCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // The current holder retracts a pending custody offer before it is accepted.
+  async function cancelCustody(serial) {
+    try {
+      const tx = await wallet.contract.cancelCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // The proposed recipient declines a pending custody offer (custody stays with the holder).
+  async function declineCustody(serial) {
+    try {
+      const tx = await wallet.contract.declineCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // Pending custody offers addressed to the connected account (awaiting its acceptance).
+  // Confirms each offer is still live via the public pendingHolder mapping.
+  async function fetchPendingCustody() {
+    const events = await wallet.contract.queryFilter(
+      wallet.contract.filters.CustodyProposed(null, null, wallet.account)
+    )
+    const serials = [...new Set(events.map(e => e.args.serialNumber))]
+    const offers = await Promise.all(serials.map(async (s) => {
+      const pending = await wallet.contract.pendingHolder(s)
+      if (pending.toLowerCase() !== wallet.account.toLowerCase()) return null
+      const proposer = events.filter(e => e.args.serialNumber === s).at(-1)?.args.from
+      return { serial: fromBytes32(s), from: proposer }
+    }))
+    return offers.filter(Boolean)
+  }
+
+  // Live custody offers the connected account has MADE and can still cancel.
+  // An offer is cancellable only while it is still pending AND the account is still the holder.
+  async function fetchOutgoingCustody() {
+    const events = await wallet.contract.queryFilter(
+      wallet.contract.filters.CustodyProposed(null, wallet.account, null)
+    )
+    const serials = [...new Set(events.map(e => e.args.serialNumber))]
+    const offers = await Promise.all(serials.map(async (s) => {
+      const pending = await wallet.contract.pendingHolder(s)
+      if (pending === ZeroAddress) return null // accepted, cancelled, or cleared by a transition
+      const b = await wallet.contract.getBatch(s)
+      if (b.currentHolder.toLowerCase() !== wallet.account.toLowerCase()) return null // no longer your offer
+      return { serial: fromBytes32(s), to: pending }
+    }))
+    return offers.filter(Boolean)
   }
 
   async function receiveBatch(serial, location) {
@@ -199,9 +263,12 @@ export function useBatches() {
   async function fetchBatchTimeline(serial) {
     const s = toBytes32(serial)
 
-    const [created, transitioned, transferred, certified] = await Promise.all([
+    const [created, transitioned, proposed, cancelled, declined, transferred, certified] = await Promise.all([
       wallet.contract.queryFilter(wallet.contract.filters.BatchCreated(s)),
       wallet.contract.queryFilter(wallet.contract.filters.BatchTransitioned(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.CustodyProposed(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.CustodyCancelled(s)),
+      wallet.contract.queryFilter(wallet.contract.filters.CustodyDeclined(s)),
       wallet.contract.queryFilter(wallet.contract.filters.CustodyTransferred(s)),
       wallet.contract.queryFilter(wallet.contract.filters.BatchCertified(s)),
     ])
@@ -219,6 +286,24 @@ export function useBatches() {
         to:       STATUSES[Number(e.args.to)],
         location: fromBytes32(e.args.location),
         actor:    e.args.by,
+      })),
+      ...proposed.map(e => ({
+        type:  'proposed',
+        block: e.blockNumber,
+        from:  e.args.from,
+        to:    e.args.to,
+      })),
+      ...cancelled.map(e => ({
+        type:  'cancelled',
+        block: e.blockNumber,
+        from:  e.args.from,
+        to:    e.args.to,
+      })),
+      ...declined.map(e => ({
+        type:  'declined',
+        block: e.blockNumber,
+        from:  e.args.from,
+        to:    e.args.to,
       })),
       ...transferred.map(e => ({
         type:  'transferred',
@@ -242,8 +327,13 @@ export function useBatches() {
     fetchAllBatches,
     fetchHeldBatches,
     fetchBatchTimeline,
+    fetchPendingCustody,
+    fetchOutgoingCustody,
     createBatch,
-    transferCustody,
+    proposeCustody,
+    acceptCustody,
+    cancelCustody,
+    declineCustody,
     receiveBatch,
     shipBatch,
     distributeBatch,

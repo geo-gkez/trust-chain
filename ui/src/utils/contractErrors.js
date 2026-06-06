@@ -13,6 +13,8 @@ const ERROR_MESSAGES = {
   DuplicateSerial:         'A batch with this serial number already exists.',
   InvalidTransition:       'This status change is not allowed.',
   NotCurrentHolder:        'You are not the current holder of this batch.',
+  NoPendingCustody:        'There is no pending custody offer for this batch.',
+  NotPendingHolder:        'This custody offer was not made to your address.',
   BatchExpired:            'This batch has expired and cannot move forward.',
   CannotDistributeRecalled:'A recalled batch cannot be distributed.',
   BatchNotRecalled:        'This batch has not been recalled.',
