@@ -31,8 +31,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(tc.getBatch(OLIVE).currentHolder, alice);
 
         // Alice hands custody to Charlie (WAREHOUSE) at origin
-        vm.prank(alice);
-        tc.transferCustody(OLIVE, charlie);
+        _handoff(OLIVE, alice, charlie);
 
         // Charlie receives at origin warehouse
         vm.prank(charlie);
@@ -41,8 +40,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(tc.getBatch(OLIVE).currentHolder, charlie);
 
         // Charlie hands custody to Bob (TRANSPORTER) for first leg
-        vm.prank(charlie);
-        tc.transferCustody(OLIVE, bob);
+        _handoff(OLIVE, charlie, bob);
 
         // Bob picks up for first leg
         vm.prank(bob);
@@ -50,8 +48,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.IN_TRANSIT));
 
         // Bob hands custody to Charlie at hub warehouse
-        vm.prank(bob);
-        tc.transferCustody(OLIVE, charlie);
+        _handoff(OLIVE, bob, charlie);
 
         // Charlie receives at hub warehouse
         vm.prank(charlie);
@@ -59,8 +56,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.STORED));
 
         // Charlie hands custody to Bob for final leg
-        vm.prank(charlie);
-        tc.transferCustody(OLIVE, bob);
+        _handoff(OLIVE, charlie, bob);
 
         // Bob ships final leg
         vm.prank(bob);
@@ -68,8 +64,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(OLIVE).status), uint8(Status.IN_TRANSIT));
 
         // Bob hands custody to distributor
-        vm.prank(bob);
-        tc.transferCustody(OLIVE, distributor);
+        _handoff(OLIVE, bob, distributor);
 
         // Distributor delivers
         vm.prank(distributor);
@@ -96,8 +91,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.PRODUCED));
 
         // Alice hands custody to Charlie (WAREHOUSE)
-        vm.prank(alice);
-        tc.transferCustody(PHARMA, charlie);
+        _handoff(PHARMA, alice, charlie);
 
         // Charlie receives at origin warehouse
         vm.prank(charlie);
@@ -105,8 +99,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.STORED));
 
         // Charlie hands custody to Bob (TRANSPORTER)
-        vm.prank(charlie);
-        tc.transferCustody(PHARMA, bob);
+        _handoff(PHARMA, charlie, bob);
 
         // Bob ships to distributor
         vm.prank(bob);
@@ -114,8 +107,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertEq(uint8(tc.getBatch(PHARMA).status), uint8(Status.IN_TRANSIT));
 
         // Bob hands custody to distributor
-        vm.prank(bob);
-        tc.transferCustody(PHARMA, distributor);
+        _handoff(PHARMA, bob, distributor);
 
         // Distributor delivers
         vm.prank(distributor);
@@ -129,8 +121,7 @@ contract TrustChainE2ETest is TrustChainTestBase {
         assertTrue(tc.getBatch(PHARMA).recalled);
 
         // Auditor designates Charlie's warehouse for quarantine receipt
-        vm.prank(auditor);
-        tc.transferCustody(PHARMA, charlie);
+        _handoff(PHARMA, auditor, charlie);
 
         // Charlie receives into quarantine — recalled flag must survive the transition
         vm.prank(charlie);

@@ -4,7 +4,7 @@
     <!-- Header row -->
     <div class="d-flex align-center justify-space-between mb-3">
       <span class="font-weight-bold">{{ batch.serialNumber }}</span>
-      <div class="d-flex gap-2">
+      <div class="d-flex ga-2">
         <v-chip v-if="isExpired"   color="error"   size="small" variant="tonal">Expired</v-chip>
         <v-chip v-else-if="isNearExpiry" color="warning" size="small" variant="tonal">Expires soon</v-chip>
         <v-chip :color="batch.statusColor" size="small" variant="tonal">{{ batch.statusLabel }}</v-chip>
@@ -16,7 +16,8 @@
     <v-table density="compact" class="text-body-2">
       <tbody>
         <tr><td class="text-medium-emphasis">Origin</td>      <td>{{ batch.origin }}</td></tr>
-        <tr><td class="text-medium-emphasis">Quantity</td>    <td>{{ batch.quantity }}</td></tr>
+        <tr><td class="text-medium-emphasis">Product Type</td><td>{{ batch.productTypeLabel || '—' }}</td></tr>
+        <tr><td class="text-medium-emphasis">Quantity</td>    <td>{{ batch.quantity }}<span v-if="batch.unitLabel">&nbsp;{{ batch.unitLabel }}</span></td></tr>
         <tr><td class="text-medium-emphasis">Category</td>    <td>{{ batch.categoryLabel }}</td></tr>
         <tr><td class="text-medium-emphasis">Holder</td>      <td class="text-truncate" style="max-width:200px">{{ batch.currentHolder }}</td></tr>
         <tr v-if="batch.expiryDate">

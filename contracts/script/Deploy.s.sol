@@ -107,34 +107,46 @@ contract Deploy is Script {
     function _route1_oliveOil() internal {
         bytes32 s = "OLIVE-GR-001";
 
+        // Producer offers custody to the origin warehouse.
         vm.startBroadcast(PRODUCER_KEY);
-        tc.transferCustody(s, WAREHOUSE);
+        tc.proposeCustody(s, WAREHOUSE);
         vm.stopBroadcast();
 
+        // Origin warehouse accepts, receives, offers to the transporter.
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody(s);
         tc.receiveBatch(s, "WH-KALAMATA");
-        tc.transferCustody(s, TRANSPORTER);
+        tc.proposeCustody(s, TRANSPORTER);
         vm.stopBroadcast();
 
+        // Transporter accepts, ships first leg, offers to the hub warehouse.
         vm.startBroadcast(TRANSPORTER_KEY);
+        tc.acceptCustody(s);
         tc.shipBatch(s, "TRUCK-001");
-        tc.transferCustody(s, WAREHOUSE);
+        tc.proposeCustody(s, WAREHOUSE);
         vm.stopBroadcast();
 
+        // Hub warehouse accepts, receives, offers to the transporter.
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody(s);
         tc.receiveBatch(s, "WH-ATHENS");
-        tc.transferCustody(s, TRANSPORTER);
+        tc.proposeCustody(s, TRANSPORTER);
         vm.stopBroadcast();
 
+        // Transporter accepts, ships final leg, offers to the distributor.
         vm.startBroadcast(TRANSPORTER_KEY);
+        tc.acceptCustody(s);
         tc.shipBatch(s, "TRUCK-002");
-        tc.transferCustody(s, DISTRIBUTOR);
+        tc.proposeCustody(s, DISTRIBUTOR);
         vm.stopBroadcast();
 
+        // Distributor accepts and delivers.
         vm.startBroadcast(DISTRIBUTOR_KEY);
+        tc.acceptCustody(s);
         tc.distributeBatch(s, "DIST-PIR");
         vm.stopBroadcast();
 
+        // Auditor certifies the delivered batch.
         vm.startBroadcast(AUDITOR_KEY);
         tc.certifyBatch(s);
         vm.stopBroadcast();
@@ -153,31 +165,41 @@ contract Deploy is Script {
     function _route2_pharmaRecall() internal {
         bytes32 s = "PHARMA-GR-001";
 
+        // Producer offers custody to the warehouse.
         vm.startBroadcast(PRODUCER_KEY);
-        tc.transferCustody(s, WAREHOUSE);
+        tc.proposeCustody(s, WAREHOUSE);
         vm.stopBroadcast();
 
+        // Warehouse accepts, receives, offers to the transporter.
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody(s);
         tc.receiveBatch(s, "WH-ATHENS");
-        tc.transferCustody(s, TRANSPORTER);
+        tc.proposeCustody(s, TRANSPORTER);
         vm.stopBroadcast();
 
+        // Transporter accepts, ships, offers to the distributor.
         vm.startBroadcast(TRANSPORTER_KEY);
+        tc.acceptCustody(s);
         tc.shipBatch(s, "TRUCK-PHARMA");
-        tc.transferCustody(s, DISTRIBUTOR);
+        tc.proposeCustody(s, DISTRIBUTOR);
         vm.stopBroadcast();
 
+        // Distributor accepts and delivers.
         vm.startBroadcast(DISTRIBUTOR_KEY);
+        tc.acceptCustody(s);
         tc.distributeBatch(s, "DIST-ATH");
         vm.stopBroadcast();
 
-        // Auditor recalls and designates warehouse for quarantine
+        // Auditor recalls (unilateral seizure — no accept) and offers the batch to a
+        // quarantine warehouse.
         vm.startBroadcast(AUDITOR_KEY);
         tc.recallBatch(s, "DIST-ATH");
-        tc.transferCustody(s, WAREHOUSE);
+        tc.proposeCustody(s, WAREHOUSE);
         vm.stopBroadcast();
 
+        // Warehouse accepts, receives into quarantine, disposes.
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody(s);
         tc.receiveBatch(s, "WH-QUARANTINE");
         tc.disposeBatch(s, "WH-QUARANTINE");
         vm.stopBroadcast();
@@ -193,15 +215,17 @@ contract Deploy is Script {
 
         // AGRI → IN_TRANSIT (perishable, en route from Kalamata)
         vm.startBroadcast(PRODUCER_KEY);
-        tc.transferCustody("AGRI-GR-001", WAREHOUSE);
+        tc.proposeCustody("AGRI-GR-001", WAREHOUSE);
         vm.stopBroadcast();
 
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody("AGRI-GR-001");
         tc.receiveBatch("AGRI-GR-001", "WH-KALAMATA");
-        tc.transferCustody("AGRI-GR-001", TRANSPORTER);
+        tc.proposeCustody("AGRI-GR-001", TRANSPORTER);
         vm.stopBroadcast();
 
         vm.startBroadcast(TRANSPORTER_KEY);
+        tc.acceptCustody("AGRI-GR-001");
         tc.shipBatch("AGRI-GR-001", "TRUCK-003");
         vm.stopBroadcast();
 
@@ -209,10 +233,11 @@ contract Deploy is Script {
         _storeAt("STEEL-GR-001", "WH-PIR");
 
         vm.startBroadcast(WAREHOUSE_KEY);
-        tc.transferCustody("STEEL-GR-001", DISTRIBUTOR);
+        tc.proposeCustody("STEEL-GR-001", DISTRIBUTOR);
         vm.stopBroadcast();
 
         vm.startBroadcast(DISTRIBUTOR_KEY);
+        tc.acceptCustody("STEEL-GR-001");
         tc.distributeBatch("STEEL-GR-001", "DIST-PIR");
         vm.stopBroadcast();
 
@@ -227,10 +252,11 @@ contract Deploy is Script {
 
     function _storeAt(bytes32 serial, bytes32 location) internal {
         vm.startBroadcast(PRODUCER_KEY);
-        tc.transferCustody(serial, WAREHOUSE);
+        tc.proposeCustody(serial, WAREHOUSE);
         vm.stopBroadcast();
 
         vm.startBroadcast(WAREHOUSE_KEY);
+        tc.acceptCustody(serial);
         tc.receiveBatch(serial, location);
         vm.stopBroadcast();
     }
