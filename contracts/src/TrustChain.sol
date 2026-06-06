@@ -175,6 +175,7 @@ contract TrustChain is ITrustChain {
         Batch storage b = _requireBatch(serialNumber);
         if (b.currentHolder != msg.sender) revert NotCurrentHolder();
         if (!users[msg.sender].isActive) revert Unauthorized();
+        if (newHolder == msg.sender) revert SelfTransfer();
         if (newHolder == address(0)) revert ZeroAddress();
         if (!users[newHolder].isActive) revert Unauthorized();
 
@@ -204,7 +205,9 @@ contract TrustChain is ITrustChain {
         if (b.currentHolder != msg.sender) revert NotCurrentHolder();
         address to = pendingHolder[serialNumber];
         if (to == address(0)) revert NoPendingCustody();
+
         delete pendingHolder[serialNumber];
+
         emit CustodyCancelled(serialNumber, msg.sender, to);
     }
 
@@ -214,7 +217,9 @@ contract TrustChain is ITrustChain {
         address to = pendingHolder[serialNumber];
         if (to == address(0)) revert NoPendingCustody();
         if (to != msg.sender) revert NotPendingHolder();
+
         delete pendingHolder[serialNumber];
+
         emit CustodyDeclined(serialNumber, b.currentHolder, msg.sender);
     }
 

@@ -49,6 +49,7 @@ interface ITrustChain {
     error NotPendingHolder();
     error BatchExpired();
     error SelfDeactivation();
+    error SelfTransfer();
     error CannotCertifyInStatus(Status status);
     error AlreadyCertified();
     error DuplicateProductType();

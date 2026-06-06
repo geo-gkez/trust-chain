@@ -927,6 +927,14 @@ contract TrustChainTest is TrustChainTestBase {
         tc.proposeCustody(SERIAL, charlie);
     }
 
+    function test_proposeCustody_revertsWhenProposingToSelf() public {
+        // A handoff to yourself is a no-op that only pollutes the audit trail.
+        _registerAll(); // currentHolder = alice
+        vm.prank(alice);
+        vm.expectRevert(ITrustChain.SelfTransfer.selector);
+        tc.proposeCustody(SERIAL, alice);
+    }
+
     function test_proposeCustody_revertsWhenBatchNotFound() public {
         _registerAll();
         vm.prank(alice);
