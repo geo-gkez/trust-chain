@@ -5,26 +5,26 @@ Summary
 Impact: Low
 Confidence: Medium
  - [ ] ID-0
-[TrustChain._registerUser(address,bytes32,Role)](src/TrustChain.sol#L309-L317) uses timestamp for comparisons
+[TrustChain._transition(Batch,bytes32,Status,bytes32)](src/TrustChain.sol#L362-L381) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [users[account].ethAddress != address(0)](src/TrustChain.sol#L311)
+	- [b.expiryDate != 0 && b.expiryDate < block.timestamp](src/TrustChain.sol#L367)
 
-src/TrustChain.sol#L309-L317
+src/TrustChain.sol#L362-L381
 
 
  - [ ] ID-1
-[TrustChain._transition(Batch,bytes32,Status,bytes32)](src/TrustChain.sol#L347-L366) uses timestamp for comparisons
+[TrustChain._registerUser(address,bytes32,Role)](src/TrustChain.sol#L321-L329) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [b.expiryDate != 0 && b.expiryDate < block.timestamp](src/TrustChain.sol#L352)
+	- [users[account].ethAddress != address(0)](src/TrustChain.sol#L323)
 
-src/TrustChain.sol#L347-L366
+src/TrustChain.sol#L321-L329
 
 
  - [ ] ID-2
-[TrustChain.createBatch(bytes32,uint8,Category,uint8,uint128,bytes32,uint48)](src/TrustChain.sol#L122-L158) uses timestamp for comparisons
+[TrustChain.createBatch(bytes32,uint8,Category,uint8,uint128,bytes32,uint48)](src/TrustChain.sol#L129-L165) uses timestamp for comparisons
 	Dangerous comparisons:
-	- [expiryDate != 0 && expiryDate < block.timestamp](src/TrustChain.sol#L136)
+	- [expiryDate != 0 && expiryDate < block.timestamp](src/TrustChain.sol#L143)
 
-src/TrustChain.sol#L122-L158
+src/TrustChain.sol#L129-L165
 
 
