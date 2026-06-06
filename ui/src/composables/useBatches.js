@@ -206,23 +206,26 @@ export function useBatches() {
   }
 
   // Pending custody offers addressed to the connected account (awaiting its acceptance).
-  // The subgraph indexes every CustodyProposed; we confirm each is still live via
-  // the public pendingHolder mapping (an offer may since have been accepted/cleared).
+  // The subgraph is used only to discover which serials were offered to us; every
+  // field value is read live from chain. While an offer is pending, custody hasn't
+  // moved, so the batch's currentHolder IS the proposer — authoritative and free of
+  // the subgraph's "pick the latest CustodyProposed" guesswork.
   async function fetchPendingCustody() {
     const data = await gql(`
       query($to: Bytes!) {
-        custodyProposeds(first: 1000, where: { to: $to }, orderBy: block_number, orderDirection: asc) {
+        custodyProposeds(first: 1000, where: { to: $to }) {
           serialNumber
-          from
         }
       }
     `, { to: wallet.account.toLowerCase() })
     const serials = [...new Set(data.custodyProposeds.map(e => e.serialNumber))]
     const offers = await Promise.all(serials.map(async (s) => {
-      const pending = await wallet.contract.pendingHolder(s)
+      const [pending, b] = await Promise.all([
+        wallet.contract.pendingHolder(s),
+        wallet.contract.getBatch(s),
+      ])
       if (pending.toLowerCase() !== wallet.account.toLowerCase()) return null
-      const proposer = data.custodyProposeds.filter(e => e.serialNumber === s).at(-1)?.from
-      return { serial: fromBytes32(s), from: proposer }
+      return { serial: fromBytes32(s), from: b.currentHolder }
     }))
     return offers.filter(Boolean)
   }

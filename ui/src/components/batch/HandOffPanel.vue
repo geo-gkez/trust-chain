@@ -20,8 +20,9 @@ import OutgoingCustody from './OutgoingCustody.vue'
 const emit = defineEmits(['done'])
 const outgoing = ref(null)
 
-function onProposed() {
-  emit('done')            // bubble up so the role's batch lists reload
-  outgoing.value?.load()  // refresh the pending-offers list to show the new offer
+function onProposed(proposed) {
+  // Show the new offer immediately from what we just submitted; the subgraph
+  // hasn't indexed it yet, so a reload here would miss it.
+  outgoing.value?.addOffer(proposed.serial, proposed.to)
 }
 </script>

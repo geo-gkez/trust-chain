@@ -67,7 +67,7 @@
         <v-window-item value="create">
           <v-card max-width="600" class="pa-6">
             <v-card-title class="mb-4">Create New Batch</v-card-title>
-            <BatchForm @created="loadMyBatches" />
+            <BatchForm @created="onBatchCreated" />
           </v-card>
         </v-window-item>
         <v-window-item value="mybatches">
@@ -261,7 +261,7 @@ const {
   getProductTypes, getUnits, addProductType, addUnit,
 } = useAdmin()
 const {
-  fetchMyBatches, fetchHeldBatches, fetchAllBatches,
+  fetchBatch, fetchMyBatches, fetchHeldBatches, fetchAllBatches,
   receiveBatch, shipBatch, distributeBatch,
   recallBatch, disposeBatch, certifyBatch,
 } = useBatches()
@@ -317,6 +317,18 @@ async function loadMyBatches() {
   try   { myBatches.value = await fetchMyBatches() }
   catch { toast.show('Failed to load batches.', 'error') }
   finally { loadingBatches.value = false }
+}
+
+// A freshly created batch isn't indexed by the subgraph yet, so a full reload
+// (which discovers serials via the subgraph) would miss it. Read it straight
+// from chain and prepend it; the next natural reload reconciles once indexed.
+async function onBatchCreated(serial) {
+  try {
+    const batch = await fetchBatch(serial)
+    myBatches.value = [batch, ...myBatches.value.filter(b => b.serialNumber !== batch.serialNumber)]
+  } catch {
+    await loadMyBatches() // fall back to the subgraph if the chain read fails
+  }
 }
 
 async function loadHeldBatches() {

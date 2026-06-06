@@ -35,11 +35,14 @@ const loading   = ref(false)
 async function submit() {
   loading.value = true
   try {
-    await proposeCustody(serial.value, recipient.value)
-    toast.show(`Hand-off of ${serial.value} proposed — waiting for the recipient to accept.`, 'success')
+    const proposed = { serial: serial.value, to: recipient.value }
+    await proposeCustody(proposed.serial, proposed.to)
+    toast.show(`Hand-off of ${proposed.serial} proposed — waiting for the recipient to accept.`, 'success')
     serial.value    = ''
     recipient.value = ''
-    emit('done')
+    // Hand the offer up so it can be shown immediately, before the subgraph
+    // has indexed the CustodyProposed event.
+    emit('done', proposed)
   } catch (err) {
     toast.show(err.message, 'error')
   } finally {

@@ -75,8 +75,14 @@ async function cancel(serial) {
   }
 }
 
+// Optimistically show an offer we just made, before the subgraph indexes it.
+// Deduped by serial so a later subgraph reload won't double it up.
+function addOffer(serial, to) {
+  offers.value = [{ serial, to }, ...offers.value.filter(o => o.serial !== serial)]
+}
+
 onMounted(load)
 // Refresh when the connected account changes (same-role MetaMask switch included).
 watch(() => wallet.account, load)
-defineExpose({ load })
+defineExpose({ load, addOffer })
 </script>

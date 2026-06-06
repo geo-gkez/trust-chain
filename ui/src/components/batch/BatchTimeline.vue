@@ -14,7 +14,21 @@
           Producer: {{ short(entry.producer) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.producer)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Status transition -->
@@ -31,7 +45,21 @@
           Actor: {{ short(entry.actor) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.actor)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Custody proposed (step 1 of handoff) -->
@@ -43,7 +71,21 @@
           offered to {{ short(entry.to) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.to)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Custody offer cancelled (retracted before acceptance) -->
@@ -55,7 +97,21 @@
           retracted offer to {{ short(entry.to) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.to)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Custody offer declined by the proposed recipient -->
@@ -67,7 +123,21 @@
           declined offer from {{ short(entry.from) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.from)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Custody accepted (step 2 of handoff) -->
@@ -79,7 +149,21 @@
           → {{ short(entry.to) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.to)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
       <!-- Certified -->
@@ -89,7 +173,21 @@
           Auditor: {{ short(entry.auditor) }}
           <v-btn icon="mdi-content-copy" aria-label="Copy address" title="Copy address" size="x-small" variant="plain" density="compact" @click.stop="copy(entry.auditor)" />
         </div>
-        <div class="text-caption text-medium-emphasis">Block {{ entry.block }}</div>
+        <div class="text-caption text-medium-emphasis d-flex align-center ga-1">
+          Block {{ entry.block }}
+          <v-btn
+            v-if="entry.tx"
+            :href="txUrl(entry.tx)"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View transaction on Etherscan"
+            title="View on Etherscan"
+            icon="mdi-open-in-new"
+            size="x-small"
+            variant="plain"
+            density="compact"
+          />
+        </div>
       </template>
 
     </v-timeline-item>
@@ -107,6 +205,12 @@ defineProps({
 })
 
 const toast = useToastStore()
+
+// Single-network deployment (Sepolia) — keep it simple, no chain registry.
+const EXPLORER_TX_BASE = 'https://sepolia.etherscan.io/tx/'
+function txUrl(tx) {
+  return EXPLORER_TX_BASE + tx
+}
 
 async function copy(addr) {
   if (!addr) return
