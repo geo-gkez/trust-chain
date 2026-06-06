@@ -15,12 +15,12 @@ contract TrustChain is ITrustChain {
     /// means the slot is empty (used as the existence check).
     mapping(bytes32 => Batch) public batches;
 
-    // Product-type registry: 1-indexed, so productTypeCount bounds off-chain
-    // enumeration (Solidity mappings aren't iterable).
+    // Product-type registry: 0-indexed (ids 0..productTypeCount-1); the count is
+    // the exclusive upper bound for enumeration (Solidity mappings aren't iterable).
     uint8 public productTypeCount;
     mapping(uint8 => string) public productTypeNames;
 
-    // Measurement-unit registry: same 1-indexed pattern, bounded by unitCount.
+    // Measurement-unit registry: same 0-indexed pattern, bounded by unitCount.
     uint8 public unitCount;
     mapping(uint8 => string) public unitNames;
 
