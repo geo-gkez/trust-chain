@@ -55,6 +55,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useBatches } from '@/composables/useBatches'
 import { useToastStore } from '@/stores/toast'
 import { useWalletStore } from '@/stores/wallet'
+import { shortAddress as short } from '@/utils/address'
 
 const emit = defineEmits(['accepted'])
 
@@ -100,11 +101,6 @@ async function decline(serial) {
   } finally {
     declining.value = null
   }
-}
-
-function short(addr) {
-  if (!addr) return '—'
-  return addr.slice(0, 6) + '…' + addr.slice(-4)
 }
 
 onMounted(load)

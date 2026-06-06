@@ -214,6 +214,18 @@
     <!-- Still loading role -->
     <v-progress-circular v-else-if="isLoading" indeterminate color="primary" />
 
+    <!-- Role lookup failed (network / wrong contract address) -->
+    <v-alert
+      v-else-if="loadError"
+      type="error"
+      variant="tonal"
+      icon="mdi-lan-disconnect"
+      max-width="480"
+    >
+      Couldn't verify your account. Check your network connection and that you're
+      on the right chain, then try reconnecting.
+    </v-alert>
+
     <!-- Connected but not registered -->
     <v-alert
       v-else-if="wallet.isConnected"
@@ -253,7 +265,7 @@ const {
   receiveBatch, shipBatch, distributeBatch,
   recallBatch, disposeBatch, certifyBatch,
 } = useBatches()
-const { roleLabel, isLoading } = useUserRole()
+const { roleLabel, isLoading, loadError } = useUserRole()
 const wallet = useWalletStore()
 const router = useRouter()
 const toast  = useToastStore()

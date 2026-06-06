@@ -63,34 +63,9 @@ export const useWalletStore = defineStore('wallet', {
           }
         }
 
-        // 3. Create provider → signer → contract
-        const browserProvider = markRaw(new BrowserProvider(window.ethereum, CHAIN_ID))
-        const signer          = await browserProvider.getSigner()
-        this.provider = browserProvider
-        this.contract = markRaw(
-          new Contract(CONTRACT_ADDRESS, TrustChainArtifact.abi, signer)
-        )
-
-        // 4. React to MetaMask events (only register once)
-        if (!listenersRegistered) {
-          listenersRegistered = true
-          window.ethereum.on('accountsChanged', async (accs) => {
-            if (accs.length === 0) {
-              this.disconnect()
-            } else {
-              this.account = accs[0]
-              try {
-                const signer = await this.provider.getSigner()
-                this.contract = markRaw(
-                  new Contract(CONTRACT_ADDRESS, TrustChainArtifact.abi, signer)
-                )
-              } catch {
-                this.error = 'Failed to update signer after account switch.'
-              }
-            }
-          })
-          window.ethereum.on('chainChanged', () => window.location.reload())
-        }
+        // 3. Create provider → signer → contract, and wire up MetaMask events
+        await this._setupContract()
+        this._registerListeners()
       } catch (err) {
         this.error   = err.message ?? 'Connection failed'
         this.account = null
@@ -98,6 +73,59 @@ export const useWalletStore = defineStore('wallet', {
       } finally {
         this.isConnecting = false
       }
+    },
+
+    // Silently restore a session on page load — uses eth_accounts (no popup) and
+    // only reconnects if the wallet is already authorized AND on the right chain.
+    // Each wallet call is raced against a timeout so an unresponsive provider
+    // can't block app mount (main.js awaits this before first paint).
+    async autoConnect() {
+      if (!window.ethereum) return
+      const withTimeout = (p, ms = 3000) =>
+        Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('wallet timeout')), ms))])
+      try {
+        const accounts = await withTimeout(window.ethereum.request({ method: 'eth_accounts' }))
+        if (!accounts?.length) return
+        const chainId = await withTimeout(window.ethereum.request({ method: 'eth_chainId' }))
+        if (parseInt(chainId, 16) !== CHAIN_ID) return
+        this.account = accounts[0]
+        await withTimeout(this._setupContract())
+        this._registerListeners()
+      } catch {
+        // Unresponsive provider or no restorable session — stay disconnected so
+        // the app still mounts.
+        this.account = null
+        this.contract = null
+      }
+    },
+
+    // Build provider → signer → contract for the current account.
+    async _setupContract() {
+      const browserProvider = markRaw(new BrowserProvider(window.ethereum, CHAIN_ID))
+      const signer          = await browserProvider.getSigner()
+      this.provider = browserProvider
+      this.contract = markRaw(
+        new Contract(CONTRACT_ADDRESS, TrustChainArtifact.abi, signer)
+      )
+    },
+
+    // React to MetaMask account/chain changes (registered at most once).
+    _registerListeners() {
+      if (listenersRegistered) return
+      listenersRegistered = true
+      window.ethereum.on('accountsChanged', async (accs) => {
+        if (accs.length === 0) {
+          this.disconnect()
+        } else {
+          this.account = accs[0]
+          try {
+            await this._setupContract()
+          } catch {
+            this.error = 'Failed to update signer after account switch.'
+          }
+        }
+      })
+      window.ethereum.on('chainChanged', () => window.location.reload())
     },
 
     disconnect() {

@@ -4,7 +4,7 @@
     <!-- Header row -->
     <div class="d-flex align-center justify-space-between mb-3">
       <span class="font-weight-bold">{{ batch.serialNumber }}</span>
-      <div class="d-flex gap-2">
+      <div class="d-flex ga-2">
         <v-chip v-if="isExpired"   color="error"   size="small" variant="tonal">Expired</v-chip>
         <v-chip v-else-if="isNearExpiry" color="warning" size="small" variant="tonal">Expires soon</v-chip>
         <v-chip :color="batch.statusColor" size="small" variant="tonal">{{ batch.statusLabel }}</v-chip>
