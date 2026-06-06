@@ -11,14 +11,21 @@ contract TrustChain is ITrustChain {
 
     mapping(address => User) public users;
 
+    /// @notice All batches, keyed by serial number. A zero serialNumber field
+    /// means the slot is empty (used as the existence check).
     mapping(bytes32 => Batch) public batches;
 
+    // Product-type registry: 1-indexed, so productTypeCount bounds off-chain
+    // enumeration (Solidity mappings aren't iterable).
     uint8 public productTypeCount;
     mapping(uint8 => string) public productTypeNames;
 
+    // Measurement-unit registry: same 1-indexed pattern, bounded by unitCount.
     uint8 public unitCount;
     mapping(uint8 => string) public unitNames;
 
+    /// @dev State-machine adjacency matrix: allowedTransitions[from][to] == true
+    /// permits that Status change. Populated in the constructor.
     mapping(Status => mapping(Status => bool)) private allowedTransitions;
 
     /// @notice Pending custody offer per batch. Set by `proposeCustody`, consumed by
