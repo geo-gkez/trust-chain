@@ -14,7 +14,7 @@
       class="mb-4"
     />
     <v-btn type="submit" color="warning" :loading="loading" block>
-      Hand Off Custody
+      Propose Hand-Off
     </v-btn>
   </v-form>
 </template>
@@ -26,7 +26,7 @@ import { useToastStore } from '@/stores/toast'
 
 const emit = defineEmits(['done'])
 
-const { transferCustody } = useBatches()
+const { proposeCustody } = useBatches()
 const toast     = useToastStore()
 const serial    = ref('')
 const recipient = ref('')
@@ -35,11 +35,14 @@ const loading   = ref(false)
 async function submit() {
   loading.value = true
   try {
-    await transferCustody(serial.value, recipient.value)
-    toast.show(`Custody of ${serial.value} transferred.`, 'success')
+    const proposed = { serial: serial.value, to: recipient.value }
+    await proposeCustody(proposed.serial, proposed.to)
+    toast.show(`Hand-off of ${proposed.serial} proposed — waiting for the recipient to accept.`, 'success')
     serial.value    = ''
     recipient.value = ''
-    emit('done')
+    // Hand the offer up so it can be shown immediately, before the subgraph
+    // has indexed the CustodyProposed event.
+    emit('done', proposed)
   } catch (err) {
     toast.show(err.message, 'error')
   } finally {

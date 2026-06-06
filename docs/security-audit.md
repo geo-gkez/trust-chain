@@ -227,7 +227,7 @@ These are not tool findings but design decisions worth acknowledging in the repo
 |---|---|---|
 | Role-based access control | Every state-changing function | Only authorized roles can call each function |
 | `isActive` check | `_requireRole` internal | Deactivated users are fully locked out |
-| Chain-of-custody enforcement | `transferCustody`, `shipBatch`, `receiveBatch`, `distributeBatch`, `disposeBatch` | Only the current holder can execute lifecycle transitions; custody is explicitly handed off via `transferCustody` |
+| Chain-of-custody enforcement | `proposeCustody`/`acceptCustody`, `shipBatch`, `receiveBatch`, `distributeBatch`, `disposeBatch` | Only the current holder can execute lifecycle transitions; custody is handed off via a two-phase `proposeCustody` → `acceptCustody` handshake (both legs require an active caller, so a deactivated holder cannot offload a batch) |
 | Expiry enforcement | `_transition` internal | Expired batches are blocked from forward commerce; reverse logistics (recall, quarantine, disposal) are exempt |
 | `recalled` one-way latch | `recallBatch`, `distributeBatch` | Once recalled, a batch can never be re-distributed |
 | Transition matrix enforcement | `_transition` internal | Invalid state jumps are rejected at the contract level |

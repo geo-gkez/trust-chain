@@ -17,12 +17,6 @@ export default createVuetify({
         colors: {
           primary:   '#7C3AED',
           secondary: '#6B7280',
-          produced:  '#6B7280',
-          stored:    '#3B82F6',
-          transit:   '#F59E0B',
-          distributed: '#10B981',
-          recalled:  '#EF4444',
-          disposed:  '#7C3AED',
         },
       },
     },

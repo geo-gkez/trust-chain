@@ -144,8 +144,9 @@ async function submit() {
       ? Math.floor(new Date(form.value.expiryDate).getTime() / 1000)
       : 0
 
+    const createdSerial = form.value.serial
     await createBatch(
-      form.value.serial,
+      createdSerial,
       form.value.productTypeId,
       form.value.category,
       form.value.unitId,
@@ -153,10 +154,12 @@ async function submit() {
       form.value.origin,
       expiry,
     )
-    toast.show(`Batch ${form.value.serial} created.`, 'success')
+    toast.show(`Batch ${createdSerial} created.`, 'success')
     form.value = { serial: '', origin: '', productTypeId: null, category: null, unitId: null, quantity: 1, expiryDate: '' }
     submitted.value = false
-    emit('created')
+    // Pass the serial so the dashboard can read the new batch straight from chain
+    // (avoids the subgraph's indexing lag for a record that was just created).
+    emit('created', createdSerial)
   } catch (err) {
     toast.show(err.message, 'error')
   } finally {

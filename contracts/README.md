@@ -77,7 +77,7 @@ forge test --match-path test/TrustChain.t.sol -v
 forge snapshot
 
 # Coverage report (requires lcov installed)
-forge coverage --report lcov && genhtml lcov.info -o coverage/
+forge coverage --ir-minimum --report lcov && genhtml lcov.info -o coverage/
 ```
 
 ---

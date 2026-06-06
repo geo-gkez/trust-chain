@@ -11,15 +11,26 @@ contract TrustChain is ITrustChain {
 
     mapping(address => User) public users;
 
+    /// @notice All batches, keyed by serial number. A zero serialNumber field
+    /// means the slot is empty (used as the existence check).
     mapping(bytes32 => Batch) public batches;
 
+    // Product-type registry: 0-indexed (ids 0..productTypeCount-1); the count is
+    // the exclusive upper bound for enumeration (Solidity mappings aren't iterable).
     uint8 public productTypeCount;
     mapping(uint8 => string) public productTypeNames;
 
+    // Measurement-unit registry: same 0-indexed pattern, bounded by unitCount.
     uint8 public unitCount;
     mapping(uint8 => string) public unitNames;
 
+    /// @dev State-machine adjacency matrix: allowedTransitions[from][to] == true
+    /// permits that Status change. Populated in the constructor.
     mapping(Status => mapping(Status => bool)) private allowedTransitions;
+
+    /// @notice Pending custody offer per batch. Set by `proposeCustody`, consumed by
+    /// `acceptCustody`, cleared by `cancelCustody` or any status transition. address(0) = none.
+    mapping(bytes32 => address) public pendingHolder;
 
     // ── Modifiers ───────────────────────────────────────────────────────
 
@@ -155,14 +166,61 @@ contract TrustChain is ITrustChain {
 
     // ── Lifecycle Domain ────────────────────────────────────────────────
 
-    function transferCustody(bytes32 serialNumber, address newHolder) external {
+    /// @notice Step 1 of a two-phase handoff: the current holder offers custody to `newHolder`.
+    /// @dev Custody does NOT move here — the recipient must call `acceptCustody`. This models a
+    /// real physical handoff where the receiver explicitly accepts delivery, and prevents dumping
+    /// a batch onto an unwilling or wrong-role party. The caller must be an active user, so a
+    /// deactivated holder can no longer offload a batch they hold.
+    function proposeCustody(bytes32 serialNumber, address newHolder) external {
         Batch storage b = _requireBatch(serialNumber);
         if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+        if (!users[msg.sender].isActive) revert Unauthorized();
+        if (newHolder == msg.sender) revert SelfTransfer();
         if (newHolder == address(0)) revert ZeroAddress();
         if (!users[newHolder].isActive) revert Unauthorized();
+
+        pendingHolder[serialNumber] = newHolder;
+
+        emit CustodyProposed(serialNumber, msg.sender, newHolder);
+    }
+
+    /// @notice Step 2 of a two-phase handoff: the proposed recipient accepts and custody moves.
+    function acceptCustody(bytes32 serialNumber) external {
+        Batch storage b = _requireBatch(serialNumber);
+        address to = pendingHolder[serialNumber];
+        if (to == address(0)) revert NoPendingCustody();
+        if (to != msg.sender) revert NotPendingHolder();
+        if (!users[msg.sender].isActive) revert Unauthorized();
+
         address oldHolder = b.currentHolder;
-        b.currentHolder = newHolder;
-        emit CustodyTransferred(serialNumber, oldHolder, newHolder);
+        b.currentHolder = msg.sender;
+        delete pendingHolder[serialNumber];
+
+        emit CustodyTransferred(serialNumber, oldHolder, msg.sender);
+    }
+
+    /// @notice The current holder retracts a pending custody offer before it is accepted.
+    function cancelCustody(bytes32 serialNumber) external {
+        Batch storage b = _requireBatch(serialNumber);
+        if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+        address to = pendingHolder[serialNumber];
+        if (to == address(0)) revert NoPendingCustody();
+
+        delete pendingHolder[serialNumber];
+
+        emit CustodyCancelled(serialNumber, msg.sender, to);
+    }
+
+    /// @notice The proposed recipient declines a pending custody offer. Custody stays with the holder.
+    function declineCustody(bytes32 serialNumber) external {
+        Batch storage b = _requireBatch(serialNumber);
+        address to = pendingHolder[serialNumber];
+        if (to == address(0)) revert NoPendingCustody();
+        if (to != msg.sender) revert NotPendingHolder();
+
+        delete pendingHolder[serialNumber];
+
+        emit CustodyDeclined(serialNumber, b.currentHolder, msg.sender);
     }
 
     function receiveBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
@@ -185,12 +243,15 @@ contract TrustChain is ITrustChain {
     }
 
     /// @notice Recalls a batch. After this call the auditor becomes `currentHolder`.
-    /// To dispose the recalled batch, the auditor must call `transferCustody` to a
-    /// warehouse address before the warehouse can call `disposeBatch`.
+    /// @dev A recall is a unilateral regulatory seizure: unlike a normal handoff it does NOT use
+    /// the propose/accept flow, because requiring the current holder's consent would let a bad
+    /// actor block the seizure. To later dispose the batch, the auditor proposes custody to a
+    /// warehouse (`proposeCustody`), the warehouse accepts (`acceptCustody`) and receives it.
     function recallBatch(bytes32 serialNumber, bytes32 location) external onlyAuditor {
         Batch storage b = _requireBatch(serialNumber);
         b.recalled = true;
         _transition(b, serialNumber, Status.RECALLED, location);
+
         emit BatchRecalled(serialNumber, msg.sender);
     }
 
@@ -198,16 +259,20 @@ contract TrustChain is ITrustChain {
         Batch storage b = _requireBatch(serialNumber);
         if (b.status != Status.DISTRIBUTED) revert CannotCertifyInStatus(b.status);
         if (b.certified) revert AlreadyCertified();
+
         b.certified = true;
+
         emit BatchCertified(serialNumber, msg.sender);
     }
 
     /// @notice Disposes a recalled batch. The warehouse must be the `currentHolder`
-    /// (set via `transferCustody` by the auditor after `recallBatch`).
+    /// (the auditor proposes custody to the warehouse after `recallBatch`, the warehouse
+    /// accepts via `acceptCustody`, then receives the batch into quarantine).
     function disposeBatch(bytes32 serialNumber, bytes32 location) external onlyWarehouse {
         Batch storage b = _requireBatch(serialNumber);
         if (!b.recalled) revert BatchNotRecalled();
         if (b.currentHolder != msg.sender) revert NotCurrentHolder();
+
         _transition(b, serialNumber, Status.DISPOSED, location);
     }
 
@@ -226,6 +291,7 @@ contract TrustChain is ITrustChain {
         for (uint8 i = 0; i < productTypeCount; i++) {
             types[i] = productTypeNames[i];
         }
+
         return types;
     }
 
@@ -234,6 +300,7 @@ contract TrustChain is ITrustChain {
         for (uint8 i = 0; i < unitCount; i++) {
             u[i] = unitNames[i];
         }
+
         return u;
     }
 
@@ -257,6 +324,7 @@ contract TrustChain is ITrustChain {
 
         users[account] =
             User({ethAddress: account, role: role, isActive: true, registeredAt: uint48(block.timestamp), name: name});
+
         emit UserRegistered(account, name, role);
     }
 
@@ -266,7 +334,9 @@ contract TrustChain is ITrustChain {
             if (keccak256(bytes(productTypeNames[i])) == nameHash) revert DuplicateProductType();
         }
         productTypeNames[productTypeCount] = name;
+
         emit ProductTypeAdded(productTypeCount, name);
+
         productTypeCount++;
     }
 
@@ -285,7 +355,10 @@ contract TrustChain is ITrustChain {
         if (b.serialNumber == bytes32(0)) revert BatchNotFound();
     }
 
-    /// @dev Overload for callers that already hold the storage reference.
+    /// @dev Core status-transition routine. Validates the move against
+    /// `allowedTransitions` (enforcing expiry except on reverse-logistics paths),
+    /// updates state, clears any pending custody offer, and emits BatchTransitioned.
+    /// Callers pass the already-loaded storage ref from `_requireBatch`.
     function _transition(Batch storage b, bytes32 serialNumber, Status to, bytes32 location) internal {
         // Expiry blocks forward commerce only. Any transition that is part of reverse
         // logistics (currently in RECALLED, or heading to RECALLED / DISPOSED) must
@@ -293,10 +366,17 @@ contract TrustChain is ITrustChain {
         if (b.status != Status.RECALLED && to != Status.RECALLED && to != Status.DISPOSED) {
             if (b.expiryDate != 0 && b.expiryDate < block.timestamp) revert BatchExpired();
         }
+
         Status from = b.status;
+
         if (!allowedTransitions[from][to]) revert InvalidTransition(from, to);
+
         b.status = to;
         b.currentHolder = msg.sender;
+
+        // A status change invalidates any stale custody offer made under the previous state.
+        delete pendingHolder[serialNumber];
+
         emit BatchTransitioned(serialNumber, from, to, location, msg.sender, uint48(block.timestamp));
     }
 }
