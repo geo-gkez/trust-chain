@@ -60,6 +60,7 @@
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="create">Create Batch</v-tab>
         <v-tab value="mybatches">My Batches</v-tab>
+        <v-tab value="incoming">Incoming</v-tab>
         <v-tab value="handoff">Hand Off</v-tab>
       </v-tabs>
       <v-window v-model="tab">
@@ -72,11 +73,14 @@
         <v-window-item value="mybatches">
           <BatchGrid :batches="myBatches" :loading="loadingBatches" />
         </v-window-item>
-        <v-window-item value="handoff">
-          <v-card max-width="480" class="pa-6">
-            <v-card-title class="mb-4">Hand Off Custody</v-card-title>
-            <CustodyForm @done="loadMyBatches" />
+        <v-window-item value="incoming">
+          <v-card max-width="560" class="pa-6">
+            <v-card-title class="mb-4">Incoming Custody</v-card-title>
+            <IncomingCustody @accepted="loadMyBatches" />
           </v-card>
+        </v-window-item>
+        <v-window-item value="handoff">
+          <HandOffPanel @done="loadMyBatches" />
         </v-window-item>
       </v-window>
     </template>
@@ -85,12 +89,19 @@
     <template v-else-if="roleLabel === 'WAREHOUSE'">
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="held">My Batches</v-tab>
+        <v-tab value="incoming">Incoming</v-tab>
         <v-tab value="receive">Receive</v-tab>
         <v-tab value="dispose">Dispose</v-tab>
         <v-tab value="handoff">Hand Off</v-tab>
       </v-tabs>
       <v-window v-model="tab">
         <v-window-item value="held"><BatchGrid :batches="heldBatches" :loading="loadingBatches" /></v-window-item>
+        <v-window-item value="incoming">
+          <v-card max-width="560" class="pa-6">
+            <v-card-title class="mb-4">Incoming Custody</v-card-title>
+            <IncomingCustody @accepted="loadHeldBatches" />
+          </v-card>
+        </v-window-item>
         <v-window-item value="receive">
           <v-card max-width="480" class="pa-6">
             <v-card-title class="mb-4">Receive Batch</v-card-title>
@@ -104,10 +115,7 @@
           </v-card>
         </v-window-item>
         <v-window-item value="handoff">
-          <v-card max-width="480" class="pa-6">
-            <v-card-title class="mb-4">Hand Off Custody</v-card-title>
-            <CustodyForm @done="loadHeldBatches" />
-          </v-card>
+          <HandOffPanel @done="loadHeldBatches" />
         </v-window-item>
       </v-window>
     </template>
@@ -116,11 +124,18 @@
     <template v-else-if="roleLabel === 'TRANSPORTER'">
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="held">My Batches</v-tab>
+        <v-tab value="incoming">Incoming</v-tab>
         <v-tab value="ship">Ship</v-tab>
         <v-tab value="handoff">Hand Off</v-tab>
       </v-tabs>
       <v-window v-model="tab">
         <v-window-item value="held"><BatchGrid :batches="heldBatches" :loading="loadingBatches" /></v-window-item>
+        <v-window-item value="incoming">
+          <v-card max-width="560" class="pa-6">
+            <v-card-title class="mb-4">Incoming Custody</v-card-title>
+            <IncomingCustody @accepted="loadHeldBatches" />
+          </v-card>
+        </v-window-item>
         <v-window-item value="ship">
           <v-card max-width="480" class="pa-6">
             <v-card-title class="mb-4">Ship Batch</v-card-title>
@@ -128,10 +143,7 @@
           </v-card>
         </v-window-item>
         <v-window-item value="handoff">
-          <v-card max-width="480" class="pa-6">
-            <v-card-title class="mb-4">Hand Off Custody</v-card-title>
-            <CustodyForm @done="loadHeldBatches" />
-          </v-card>
+          <HandOffPanel @done="loadHeldBatches" />
         </v-window-item>
       </v-window>
     </template>
@@ -140,11 +152,18 @@
     <template v-else-if="roleLabel === 'DISTRIBUTOR'">
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="held">My Batches</v-tab>
+        <v-tab value="incoming">Incoming</v-tab>
         <v-tab value="distribute">Distribute</v-tab>
         <v-tab value="handoff">Hand Off</v-tab>
       </v-tabs>
       <v-window v-model="tab">
         <v-window-item value="held"><BatchGrid :batches="heldBatches" :loading="loadingBatches" /></v-window-item>
+        <v-window-item value="incoming">
+          <v-card max-width="560" class="pa-6">
+            <v-card-title class="mb-4">Incoming Custody</v-card-title>
+            <IncomingCustody @accepted="loadHeldBatches" />
+          </v-card>
+        </v-window-item>
         <v-window-item value="distribute">
           <v-card max-width="480" class="pa-6">
             <v-card-title class="mb-4">Distribute Batch</v-card-title>
@@ -152,10 +171,7 @@
           </v-card>
         </v-window-item>
         <v-window-item value="handoff">
-          <v-card max-width="480" class="pa-6">
-            <v-card-title class="mb-4">Hand Off Custody</v-card-title>
-            <CustodyForm @done="loadHeldBatches" />
-          </v-card>
+          <HandOffPanel @done="loadHeldBatches" />
         </v-window-item>
       </v-window>
     </template>
@@ -164,12 +180,19 @@
     <template v-else-if="roleLabel === 'AUDITOR'">
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="all">All Batches</v-tab>
+        <v-tab value="incoming">Incoming</v-tab>
         <v-tab value="recall">Recall</v-tab>
         <v-tab value="certify">Certify</v-tab>
         <v-tab value="handoff">Hand Off</v-tab>
       </v-tabs>
       <v-window v-model="tab">
         <v-window-item value="all"><BatchGrid :batches="allBatches" :loading="loadingBatches" /></v-window-item>
+        <v-window-item value="incoming">
+          <v-card max-width="560" class="pa-6">
+            <v-card-title class="mb-4">Incoming Custody</v-card-title>
+            <IncomingCustody @accepted="loadAllBatches" />
+          </v-card>
+        </v-window-item>
         <v-window-item value="recall">
           <v-card max-width="480" class="pa-6">
             <v-card-title class="mb-4">Recall Batch</v-card-title>
@@ -183,16 +206,25 @@
           </v-card>
         </v-window-item>
         <v-window-item value="handoff">
-          <v-card max-width="480" class="pa-6">
-            <v-card-title class="mb-4">Hand Off Custody</v-card-title>
-            <CustodyForm @done="loadAllBatches" />
-          </v-card>
+          <HandOffPanel @done="loadAllBatches" />
         </v-window-item>
       </v-window>
     </template>
 
     <!-- Still loading role -->
     <v-progress-circular v-else-if="isLoading" indeterminate color="primary" />
+
+    <!-- Role lookup failed (network / wrong contract address) -->
+    <v-alert
+      v-else-if="loadError"
+      type="error"
+      variant="tonal"
+      icon="mdi-lan-disconnect"
+      max-width="480"
+    >
+      Couldn't verify your account. Check your network connection and that you're
+      on the right chain, then try reconnecting.
+    </v-alert>
 
     <!-- Connected but not registered -->
     <v-alert
@@ -219,7 +251,8 @@ import { useWalletStore } from '@/stores/wallet'
 import UserForm       from '@/components/admin/UserForm.vue'
 import BatchForm      from '@/components/batch/BatchForm.vue'
 import BatchGrid      from '@/components/batch/BatchGrid.vue'
-import CustodyForm    from '@/components/batch/CustodyForm.vue'
+import HandOffPanel   from '@/components/batch/HandOffPanel.vue'
+import IncomingCustody from '@/components/batch/IncomingCustody.vue'
 import TransitionForm from '@/components/batch/TransitionForm.vue'
 
 // ── Composables ───────────────────────────────────────────────────────────
@@ -232,7 +265,7 @@ const {
   receiveBatch, shipBatch, distributeBatch,
   recallBatch, disposeBatch, certifyBatch,
 } = useBatches()
-const { roleLabel, isLoading } = useUserRole()
+const { roleLabel, isLoading, loadError } = useUserRole()
 const wallet = useWalletStore()
 const router = useRouter()
 const toast  = useToastStore()
@@ -312,6 +345,17 @@ watch(roleLabel, async (role) => {
   else if (role === 'AUDITOR')       { await loadAllBatches() }
   else                               { await loadHeldBatches() }
 }, { immediate: true })
+
+// Same-role MetaMask account switch: roleLabel doesn't change, so reload the
+// active role's batch list explicitly. (Custody lists self-refresh via their own watch.)
+watch(() => wallet.account, () => {
+  const role = roleLabel.value
+  if (!role) return
+  if (role === 'ADMIN') loadUsers()
+  else if (role === 'PRODUCER') loadMyBatches()
+  else if (role === 'AUDITOR') loadAllBatches()
+  else loadHeldBatches()
+})
 
 // ── Admin actions ─────────────────────────────────────────────────────────
 async function deactivate(address) {

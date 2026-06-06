@@ -57,7 +57,7 @@
     >
       {{ toast.message }}
       <template #actions>
-        <v-btn variant="text" icon="mdi-close" size="small" @click="toast.visible = false" />
+        <v-btn variant="text" icon="mdi-close" aria-label="Dismiss notification" size="small" @click="toast.visible = false" />
       </template>
     </v-snackbar>
 

@@ -1,0 +1,263 @@
+No files changed, compilation skipped
+
+Ran 2 tests for test/TrustChain.e2e.t.sol:TrustChainE2ETest
+[PASS] test_e2e_forwardChain() (gas: 777031)
+[PASS] test_e2e_recallAndDispose() (gas: 780885)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 27.55ms (2.53ms CPU time)
+
+Ran 3 tests for test/TrustChain.fuzz.t.sol:TrustChainFuzzTest
+[PASS] testFuzz_createBatch_expiryBoundary(uint48) (runs: 256, μ: 203288, ~: 227220)
+[PASS] testFuzz_createBatch_productTypeIdBoundary(uint8) (runs: 256, μ: 173963, ~: 120604)
+[PASS] testFuzz_createBatch_storesQuantityExactly(uint128) (runs: 256, μ: 242012, ~: 241988)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 34.71ms (81.06ms CPU time)
+
+Ran 98 tests for test/TrustChain.t.sol:TrustChainTest
+[PASS] test_activateUser_emitsEvent() (gas: 146383)
+[PASS] test_activateUser_revertsWhenCallerNotAdmin() (gas: 138971)
+[PASS] test_activateUser_revertsWhenNotRegistered() (gas: 36856)
+[PASS] test_activateUser_setsIsActiveTrue() (gas: 148776)
+[PASS] test_addProductType() (gas: 151499)
+[PASS] test_addProductType_emitsEvent() (gas: 84123)
+[PASS] test_addProductType_revertsWhenCallerNotAdmin() (gas: 35094)
+[PASS] test_addProductType_revertsWhenDuplicate() (gas: 37658)
+[PASS] test_addUnit_appendsToRegistry() (gas: 151319)
+[PASS] test_addUnit_emitsEvent() (gas: 83987)
+[PASS] test_addUnit_revertsWhenCallerNotAdmin() (gas: 35002)
+[PASS] test_addUnit_revertsWhenDuplicate() (gas: 37536)
+[PASS] test_batchesAreIsolated() (gas: 785217)
+[PASS] test_certifyBatch_emitsEvent() (gas: 715942)
+[PASS] test_certifyBatch_revertsWhenAlreadyCertified() (gas: 745898)
+[PASS] test_certifyBatch_revertsWhenBatchNotFound() (gas: 553760)
+[PASS] test_certifyBatch_revertsWhenDisposed() (gas: 869614)
+[PASS] test_certifyBatch_revertsWhenNotDistributed() (gas: 556503)
+[PASS] test_certifyBatch_revertsWhenRecalled() (gas: 753232)
+[PASS] test_certifyBatch_revertsWhenUnauthorized() (gas: 703209)
+[PASS] test_certifyBatch_setsCertifiedFlag() (gas: 728479)
+[PASS] test_constructor_registersDeployerAsAdmin() (gas: 15724)
+[PASS] test_constructor_seedsProductTypes() (gas: 39284)
+[PASS] test_constructor_seedsTransitionMatrix() (gas: 843127)
+[PASS] test_constructor_seedsUnits() (gas: 39217)
+[PASS] test_createBatch_allowsExpiryAtExactTimestamp() (gas: 241845)
+[PASS] test_createBatch_allowsZeroExpiry() (gas: 241785)
+[PASS] test_createBatch_emitsEvent() (gas: 228900)
+[PASS] test_createBatch_happyPath() (gas: 244230)
+[PASS] test_createBatch_revertsWhenDuplicateSerial() (gas: 260503)
+[PASS] test_createBatch_revertsWhenExpiryInPast() (gas: 113794)
+[PASS] test_createBatch_revertsWhenInvalidProductType() (gas: 111098)
+[PASS] test_createBatch_revertsWhenInvalidUnit() (gas: 113282)
+[PASS] test_createBatch_revertsWhenNotProducer() (gas: 36148)
+[PASS] test_createBatch_revertsWhenOriginZero() (gas: 113298)
+[PASS] test_createBatch_revertsWhenQuantityZero() (gas: 113291)
+[PASS] test_createBatch_revertsWhenSerialZero() (gas: 113204)
+[PASS] test_createBatch_setsInitialStatus() (gas: 243871)
+[PASS] test_deactivateUser_emitsEvent() (gas: 115083)
+[PASS] test_deactivateUser_revertsWhenCallerNotAdmin() (gas: 107763)
+[PASS] test_deactivateUser_revertsWhenNotRegistered() (gas: 36930)
+[PASS] test_deactivateUser_revertsWhenSelf() (gas: 34722)
+[PASS] test_deactivateUser_setsIsActiveFalse() (gas: 117475)
+[PASS] test_deactivatedUser_cannotCallRoleFunction() (gas: 140168)
+[PASS] test_disposeBatch_emitsEvent() (gas: 842578)
+[PASS] test_disposeBatch_recalledStoredToDisposed() (gas: 853828)
+[PASS] test_disposeBatch_revertsOnInvalidTransition() (gas: 793352)
+[PASS] test_disposeBatch_revertsWhenBatchNotFound() (gas: 554068)
+[PASS] test_disposeBatch_revertsWhenNotCurrentHolder() (gas: 904595)
+[PASS] test_disposeBatch_revertsWhenNotRecalled() (gas: 631997)
+[PASS] test_disposeBatch_revertsWhenUnauthorized() (gas: 627648)
+[PASS] test_distributeBatch_emitsEvent() (gas: 681098)
+[PASS] test_distributeBatch_inTransitToDistributed() (gas: 692370)
+[PASS] test_distributeBatch_revertsOnInvalidTransition() (gas: 596841)
+[PASS] test_distributeBatch_revertsWhenBatchNotFound() (gas: 554056)
+[PASS] test_distributeBatch_revertsWhenNotCurrentHolder() (gas: 634155)
+[PASS] test_distributeBatch_revertsWhenRecalled() (gas: 828418)
+[PASS] test_distributeBatch_revertsWhenUnauthorized() (gas: 627573)
+[PASS] test_distributeBatch_storedToDistributed() (gas: 692382)
+[PASS] test_distributeBatch_updatesCurrentHolder() (gas: 694474)
+[PASS] test_expiredBatch_canBeRecalled() (gas: 1044768)
+[PASS] test_recallBatch_distributedToRecalled() (gas: 737522)
+[PASS] test_recallBatch_emitsBatchRecalled() (gas: 724870)
+[PASS] test_recallBatch_emitsBatchTransitioned() (gas: 726161)
+[PASS] test_recallBatch_revertsOnInvalidTransition() (gas: 872857)
+[PASS] test_recallBatch_revertsWhenBatchNotFound() (gas: 554145)
+[PASS] test_recallBatch_revertsWhenUnauthorized() (gas: 703478)
+[PASS] test_recallBatch_setsRecalledFlag() (gas: 737437)
+[PASS] test_receiveBatch_emitsEvent() (gas: 605238)
+[PASS] test_receiveBatch_inTransitToStored() (gas: 692350)
+[PASS] test_receiveBatch_producedToStored() (gas: 616544)
+[PASS] test_receiveBatch_recalledToStored() (gas: 813033)
+[PASS] test_receiveBatch_revertsOnInvalidTransition() (gas: 748479)
+[PASS] test_receiveBatch_revertsWhenBatchNotFound() (gas: 554224)
+[PASS] test_receiveBatch_revertsWhenNotCurrentHolder() (gas: 556293)
+[PASS] test_receiveBatch_revertsWhenUnauthorized() (gas: 551920)
+[PASS] test_receiveBatch_updatesCurrentHolder() (gas: 618657)
+[PASS] test_registerUser_createsUserWithCorrectFields() (gas: 88625)
+[PASS] test_registerUser_emitsEvent() (gas: 84381)
+[PASS] test_registerUser_revertsWhenAlreadyRegistered() (gas: 110242)
+[PASS] test_registerUser_revertsWhenCallerNotAdmin() (gas: 37508)
+[PASS] test_registerUser_revertsWhenZeroAddress() (gas: 32924)
+[PASS] test_shipBatch_emitsEvent() (gas: 605282)
+[PASS] test_shipBatch_producedToInTransit() (gas: 616533)
+[PASS] test_shipBatch_revertsOnInvalidTransition() (gas: 748476)
+[PASS] test_shipBatch_revertsWhenBatchNotFound() (gas: 554200)
+[PASS] test_shipBatch_revertsWhenNotCurrentHolder() (gas: 556273)
+[PASS] test_shipBatch_revertsWhenUnauthorized() (gas: 551851)
+[PASS] test_shipBatch_storedToInTransit() (gas: 692339)
+[PASS] test_shipBatch_updatesCurrentHolder() (gas: 618625)
+[PASS] test_transferCustody_emitsEvent() (gas: 563513)
+[PASS] test_transferCustody_revertsWhenBatchNotFound() (gas: 551990)
+[PASS] test_transferCustody_revertsWhenInactiveUser() (gas: 587831)
+[PASS] test_transferCustody_revertsWhenNotCurrentHolder() (gas: 554156)
+[PASS] test_transferCustody_revertsWhenZeroAddress() (gas: 553800)
+[PASS] test_transferCustody_updatesHolder() (gas: 577697)
+[PASS] test_transition_allowsTransitionBeforeExpiry() (gas: 762303)
+[PASS] test_transition_revertsWhenBatchExpired() (gas: 739410)
+Suite result: ok. 98 passed; 0 failed; 0 skipped; finished in 2.25s (34.93ms CPU time)
+
+Ran 3 tests for test/TrustChain.invariant.t.sol:TrustChainInvariantTest
+[PASS] invariant_disposedImpliesRecalled() (runs: 256, calls: 128000, reverts: 127838)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| TrustChain | activateUser    | 10015 | 10015   | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addProductType  | 9895  | 9895    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addUnit         | 9902  | 9902    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | certifyBatch    | 9737  | 9737    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | createBatch     | 9935  | 9781    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | deactivateUser  | 9869  | 9869    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | disposeBatch    | 9848  | 9848    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | distributeBatch | 9745  | 9745    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | recallBatch     | 9964  | 9958    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | receiveBatch    | 9805  | 9805    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | registerUser    | 9696  | 9696    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | shipBatch       | 9818  | 9818    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | transferCustody | 9771  | 9769    | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_producerIsImmutable() (runs: 256, calls: 128000, reverts: 127824)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| TrustChain | activateUser    | 9889  | 9889    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addProductType  | 9826  | 9826    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addUnit         | 10008 | 10008   | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | certifyBatch    | 10020 | 10020   | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | createBatch     | 9631  | 9457    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | deactivateUser  | 9778  | 9778    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | disposeBatch    | 9824  | 9824    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | distributeBatch | 9784  | 9784    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | recallBatch     | 9784  | 9782    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | receiveBatch    | 9932  | 9932    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | registerUser    | 9847  | 9847    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | shipBatch       | 9897  | 9897    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | transferCustody | 9780  | 9780    | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_recalledBatchNotDistributed() (runs: 256, calls: 128000, reverts: 127829)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| TrustChain | activateUser    | 9766  | 9766    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addProductType  | 9796  | 9796    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | addUnit         | 9794  | 9794    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | certifyBatch    | 9775  | 9775    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | createBatch     | 9908  | 9744    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | deactivateUser  | 9913  | 9913    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | disposeBatch    | 9919  | 9919    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | distributeBatch | 10001 | 10001   | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | recallBatch     | 9767  | 9762    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | receiveBatch    | 9923  | 9923    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | registerUser    | 9846  | 9846    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | shipBatch       | 9626  | 9626    | 0        |
+|------------+-----------------+-------+---------+----------|
+| TrustChain | transferCustody | 9966  | 9964    | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 4.38s (8.90s CPU time)
+
+╭----------------------------------------+-----------------+--------+--------+--------+---------╮
+| src/TrustChain.sol:TrustChain Contract |                 |        |        |        |         |
++===============================================================================================+
+| Deployment Cost                        | Deployment Size |        |        |        |         |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| 2414322                                | 10960           |        |        |        |         |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+|                                        |                 |        |        |        |         |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| Function Name                          | Min             | Avg    | Median | Max    | # Calls |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| activateUser                           | 24093           | 28030  | 28642  | 30745  | 4       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| addProductType                         | 24307           | 50340  | 51608  | 73839  | 4       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| addUnit                                | 24236           | 50275  | 51549  | 73768  | 4       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| certifyBatch                           | 24047           | 30771  | 29657  | 35185  | 10      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| createBatch                            | 25066           | 118162 | 121449 | 143729 | 1344    |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| deactivateUser                         | 24349           | 29135  | 30851  | 30851  | 10      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| disposeBatch                           | 24304           | 34820  | 39787  | 39883  | 11      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| distributeBatch                        | 24293           | 37822  | 39947  | 40083  | 34      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| getBatch                               | 12883           | 12883  | 12883  | 12883  | 303     |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| getProductTypes                        | 26258           | 27374  | 26258  | 29606  | 3       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| getUnits                               | 26192           | 27308  | 26192  | 29540  | 3       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| getUser                                | 5471            | 5471   | 5471   | 5471   | 4       |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| productTypeCount                       | 2379            | 2379   | 2379   | 2379   | 256     |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| recallBatch                            | 22553           | 33458  | 31833  | 44125  | 31      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| receiveBatch                           | 24415           | 38869  | 39926  | 40062  | 53      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| registerUser                           | 24541           | 71516  | 71933  | 72089  | 1114    |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| shipBatch                              | 24392           | 36393  | 39903  | 39987  | 13      |
+|----------------------------------------+-----------------+--------+--------+--------+---------|
+| transferCustody                        | 9235            | 32466  | 33703  | 33751  | 100     |
+╰----------------------------------------+-----------------+--------+--------+--------+---------╯
+
+
+Ran 4 test suites in 4.44s (6.69s CPU time): 106 tests passed, 0 failed, 0 skipped (106 total tests)

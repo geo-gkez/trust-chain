@@ -1,4 +1,4 @@
-import { encodeBytes32String, decodeBytes32String } from 'ethers'
+import { encodeBytes32String, decodeBytes32String, ZeroAddress } from 'ethers'
 import { useWalletStore } from '@/stores/wallet'
 import { parseContractError } from '@/utils/contractErrors'
 import { gql } from '@/utils/graphql'
@@ -46,27 +46,33 @@ export function fromBytes32(b) {
 
 // ── Batch decoder ────────────────────────────────────────────────────────────
 
-function decodeBatch(raw) {
-  const statusIndex   = Number(raw.status)
-  const categoryIndex = Number(raw.category)
-  const expiry        = Number(raw.expiryDate)
+// productTypes / units are the dynamic registries (string[] indexed by id) so
+// the numeric productTypeId / unitId can be resolved to human-readable labels.
+function decodeBatch(raw, productTypes = [], units = []) {
+  const statusIndex      = Number(raw.status)
+  const categoryIndex    = Number(raw.category)
+  const productTypeIndex = Number(raw.productTypeId)
+  const unitIndex        = Number(raw.unitId)
+  const expiry           = Number(raw.expiryDate)
   return {
-    serialNumber:  fromBytes32(raw.serialNumber),
-    quantity:      Number(raw.quantity),
-    productTypeId: Number(raw.productTypeId),
-    category:      categoryIndex,
-    categoryLabel: CATEGORIES[categoryIndex],
-    status:        statusIndex,
-    statusLabel:   STATUSES[statusIndex],
-    statusColor:   STATUS_COLORS[STATUSES[statusIndex]],
-    origin:        fromBytes32(raw.origin),
-    unitId:        Number(raw.unitId),
-    producer:      raw.producer,
-    currentHolder: raw.currentHolder,
-    certified:     raw.certified,
-    recalled:      raw.recalled,
-    creationDate:  Number(raw.creationDate),
-    expiryDate:    expiry > 0 ? expiry : null,
+    serialNumber:     fromBytes32(raw.serialNumber),
+    quantity:         Number(raw.quantity),
+    productTypeId:    productTypeIndex,
+    productTypeLabel: productTypes[productTypeIndex] ?? null,
+    category:         categoryIndex,
+    categoryLabel:    CATEGORIES[categoryIndex],
+    status:           statusIndex,
+    statusLabel:      STATUSES[statusIndex],
+    statusColor:      STATUS_COLORS[STATUSES[statusIndex]],
+    origin:           fromBytes32(raw.origin),
+    unitId:           unitIndex,
+    unitLabel:        units[unitIndex] ?? null,
+    producer:         raw.producer,
+    currentHolder:    raw.currentHolder,
+    certified:        raw.certified,
+    recalled:         raw.recalled,
+    creationDate:     Number(raw.creationDate),
+    expiryDate:       expiry > 0 ? expiry : null,
   }
 }
 
@@ -77,38 +83,57 @@ export function useBatches() {
 
   // ── Reads ────────────────────────────────────────────────────────────────
 
+  // The product-type / unit registries, fetched once per list load (not per
+  // batch) so decodeBatch can resolve ids to labels.
+  async function fetchRegistries() {
+    const [productTypes, units] = await Promise.all([
+      wallet.contract.getProductTypes(),
+      wallet.contract.getUnits(),
+    ])
+    return { productTypes, units }
+  }
+
   async function fetchBatch(serial) {
-    const raw = await wallet.contract.getBatch(toBytes32(serial))
-    return decodeBatch(raw)
+    const [raw, { productTypes, units }] = await Promise.all([
+      wallet.contract.getBatch(toBytes32(serial)),
+      fetchRegistries(),
+    ])
+    return decodeBatch(raw, productTypes, units)
   }
 
   // Batches created by the connected account
   async function fetchMyBatches() {
-    const data = await gql(`
-      query($producer: Bytes!) {
-        batchCreateds(first: 1000, where: { producer: $producer }) {
-          serialNumber
+    const [data, { productTypes, units }] = await Promise.all([
+      gql(`
+        query($producer: Bytes!) {
+          batchCreateds(first: 1000, where: { producer: $producer }) {
+            serialNumber
+          }
         }
-      }
-    `, { producer: wallet.account.toLowerCase() })
+      `, { producer: wallet.account.toLowerCase() }),
+      fetchRegistries(),
+    ])
     const serials = [...new Set(data.batchCreateds.map(e => e.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
-      return decodeBatch(raw)
+      return decodeBatch(raw, productTypes, units)
     }))
   }
 
   // All batches ever created (for auditor view)
   async function fetchAllBatches() {
-    const data = await gql(`{
-      batchCreateds(first: 1000) {
-        serialNumber
-      }
-    }`)
+    const [data, { productTypes, units }] = await Promise.all([
+      gql(`{
+        batchCreateds(first: 1000) {
+          serialNumber
+        }
+      }`),
+      fetchRegistries(),
+    ])
     const serials = [...new Set(data.batchCreateds.map(e => e.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
-      return decodeBatch(raw)
+      return decodeBatch(raw, productTypes, units)
     }))
   }
 
@@ -139,14 +164,88 @@ export function useBatches() {
     }
   }
 
-  // Step 1 of every handoff — transfer custody to the next actor
-  async function transferCustody(serial, newHolder) {
+  // Step 1 of a two-phase handoff — the current holder offers custody to the next actor.
+  // Custody does not move until the recipient calls acceptCustody.
+  async function proposeCustody(serial, newHolder) {
     try {
-      const tx = await wallet.contract.transferCustody(toBytes32(serial), newHolder)
+      const tx = await wallet.contract.proposeCustody(toBytes32(serial), newHolder)
       await tx.wait()
     } catch (err) {
       throw new Error(parseContractError(err))
     }
+  }
+
+  // Step 2 of a two-phase handoff — the proposed recipient accepts and custody moves.
+  async function acceptCustody(serial) {
+    try {
+      const tx = await wallet.contract.acceptCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // The current holder retracts a pending custody offer before it is accepted.
+  async function cancelCustody(serial) {
+    try {
+      const tx = await wallet.contract.cancelCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // The proposed recipient declines a pending custody offer (custody stays with the holder).
+  async function declineCustody(serial) {
+    try {
+      const tx = await wallet.contract.declineCustody(toBytes32(serial))
+      await tx.wait()
+    } catch (err) {
+      throw new Error(parseContractError(err))
+    }
+  }
+
+  // Pending custody offers addressed to the connected account (awaiting its acceptance).
+  // The subgraph indexes every CustodyProposed; we confirm each is still live via
+  // the public pendingHolder mapping (an offer may since have been accepted/cleared).
+  async function fetchPendingCustody() {
+    const data = await gql(`
+      query($to: Bytes!) {
+        custodyProposeds(first: 1000, where: { to: $to }, orderBy: block_number, orderDirection: asc) {
+          serialNumber
+          from
+        }
+      }
+    `, { to: wallet.account.toLowerCase() })
+    const serials = [...new Set(data.custodyProposeds.map(e => e.serialNumber))]
+    const offers = await Promise.all(serials.map(async (s) => {
+      const pending = await wallet.contract.pendingHolder(s)
+      if (pending.toLowerCase() !== wallet.account.toLowerCase()) return null
+      const proposer = data.custodyProposeds.filter(e => e.serialNumber === s).at(-1)?.from
+      return { serial: fromBytes32(s), from: proposer }
+    }))
+    return offers.filter(Boolean)
+  }
+
+  // Live custody offers the connected account has MADE and can still cancel.
+  // An offer is cancellable only while it is still pending AND the account is still the holder.
+  async function fetchOutgoingCustody() {
+    const data = await gql(`
+      query($from: Bytes!) {
+        custodyProposeds(first: 1000, where: { from: $from }) {
+          serialNumber
+        }
+      }
+    `, { from: wallet.account.toLowerCase() })
+    const serials = [...new Set(data.custodyProposeds.map(e => e.serialNumber))]
+    const offers = await Promise.all(serials.map(async (s) => {
+      const pending = await wallet.contract.pendingHolder(s)
+      if (pending === ZeroAddress) return null // accepted, cancelled, or cleared by a transition
+      const b = await wallet.contract.getBatch(s)
+      if (b.currentHolder.toLowerCase() !== wallet.account.toLowerCase()) return null // no longer your offer
+      return { serial: fromBytes32(s), to: pending }
+    }))
+    return offers.filter(Boolean)
   }
 
   async function receiveBatch(serial, location) {
@@ -221,6 +320,24 @@ export function useBatches() {
           by
           location
         }
+        custodyProposeds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
+          from
+          to
+        }
+        custodyCancelleds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
+          from
+          to
+        }
+        custodyDeclineds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
+          block_number
+          transactionHash_
+          from
+          to
+        }
         custodyTransferreds(where: { serialNumber: $serial }, orderBy: block_number, orderDirection: asc) {
           block_number
           transactionHash_
@@ -251,6 +368,27 @@ export function useBatches() {
         location: fromBytes32(e.location),
         actor:    e.by,
       })),
+      ...data.custodyProposeds.map(e => ({
+        type:  'proposed',
+        block: Number(e.block_number),
+        tx:    e.transactionHash_,
+        from:  e.from,
+        to:    e.to,
+      })),
+      ...data.custodyCancelleds.map(e => ({
+        type:  'cancelled',
+        block: Number(e.block_number),
+        tx:    e.transactionHash_,
+        from:  e.from,
+        to:    e.to,
+      })),
+      ...data.custodyDeclineds.map(e => ({
+        type:  'declined',
+        block: Number(e.block_number),
+        tx:    e.transactionHash_,
+        from:  e.from,
+        to:    e.to,
+      })),
       ...data.custodyTransferreds.map(e => ({
         type:  'transferred',
         block: Number(e.block_number),
@@ -276,8 +414,13 @@ export function useBatches() {
     fetchAllBatches,
     fetchHeldBatches,
     fetchBatchTimeline,
+    fetchPendingCustody,
+    fetchOutgoingCustody,
     createBatch,
-    transferCustody,
+    proposeCustody,
+    acceptCustody,
+    cancelCustody,
+    declineCustody,
     receiveBatch,
     shipBatch,
     distributeBatch,

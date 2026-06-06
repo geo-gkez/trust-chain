@@ -40,11 +40,19 @@ abstract contract TrustChainTestBase is Test {
         tc.createBatch(SERIAL, 0, Category.PERISHABLE, 0, 1000, "GR-PEL", 0);
     }
 
+    /// Two-phase custody handoff: `from` proposes, `to` accepts. Custody ends at `to`.
+    /// Mirrors the propose/accept flow every lifecycle hop now requires.
+    function _handoff(bytes32 serial, address from, address to) internal {
+        vm.prank(from);
+        tc.proposeCustody(serial, to);
+        vm.prank(to);
+        tc.acceptCustody(serial);
+    }
+
     /// Advance batch to STORED (PRODUCED → STORED via receiveBatch).
     function _toStored() internal {
         _registerAll();
-        vm.prank(alice);
-        tc.transferCustody(SERIAL, charlie);
+        _handoff(SERIAL, alice, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
     }
@@ -52,8 +60,7 @@ abstract contract TrustChainTestBase is Test {
     /// Advance batch to IN_TRANSIT (PRODUCED → IN_TRANSIT via shipBatch).
     function _toInTransit() internal {
         _registerAll();
-        vm.prank(alice);
-        tc.transferCustody(SERIAL, bob);
+        _handoff(SERIAL, alice, bob);
         vm.prank(bob);
         tc.shipBatch(SERIAL, LOC_B);
     }
@@ -61,8 +68,7 @@ abstract contract TrustChainTestBase is Test {
     /// Advance batch to DISTRIBUTED (STORED → DISTRIBUTED).
     function _toDistributed() internal {
         _toStored();
-        vm.prank(charlie);
-        tc.transferCustody(SERIAL, distributor);
+        _handoff(SERIAL, charlie, distributor);
         vm.prank(distributor);
         tc.distributeBatch(SERIAL, LOC_C);
     }
@@ -74,8 +80,7 @@ abstract contract TrustChainTestBase is Test {
         vm.prank(auditor);
         tc.recallBatch(SERIAL, LOC_C);
         // auditor is now currentHolder; hand off to warehouse for disposal
-        vm.prank(auditor);
-        tc.transferCustody(SERIAL, charlie);
+        _handoff(SERIAL, auditor, charlie);
         vm.prank(charlie);
         tc.receiveBatch(SERIAL, LOC_A);
     }
