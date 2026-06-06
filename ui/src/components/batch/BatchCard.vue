@@ -16,7 +16,8 @@
     <v-table density="compact" class="text-body-2">
       <tbody>
         <tr><td class="text-medium-emphasis">Origin</td>      <td>{{ batch.origin }}</td></tr>
-        <tr><td class="text-medium-emphasis">Quantity</td>    <td>{{ batch.quantity }}</td></tr>
+        <tr><td class="text-medium-emphasis">Product Type</td><td>{{ batch.productTypeLabel || '—' }}</td></tr>
+        <tr><td class="text-medium-emphasis">Quantity</td>    <td>{{ batch.quantity }}<span v-if="batch.unitLabel">&nbsp;{{ batch.unitLabel }}</span></td></tr>
         <tr><td class="text-medium-emphasis">Category</td>    <td>{{ batch.categoryLabel }}</td></tr>
         <tr><td class="text-medium-emphasis">Holder</td>      <td class="text-truncate" style="max-width:200px">{{ batch.currentHolder }}</td></tr>
         <tr v-if="batch.expiryDate">

@@ -45,27 +45,33 @@ export function fromBytes32(b) {
 
 // ── Batch decoder ────────────────────────────────────────────────────────────
 
-function decodeBatch(raw) {
-  const statusIndex   = Number(raw.status)
-  const categoryIndex = Number(raw.category)
-  const expiry        = Number(raw.expiryDate)
+// productTypes / units are the dynamic registries (string[] indexed by id) so
+// the numeric productTypeId / unitId can be resolved to human-readable labels.
+function decodeBatch(raw, productTypes = [], units = []) {
+  const statusIndex      = Number(raw.status)
+  const categoryIndex    = Number(raw.category)
+  const productTypeIndex = Number(raw.productTypeId)
+  const unitIndex        = Number(raw.unitId)
+  const expiry           = Number(raw.expiryDate)
   return {
-    serialNumber:  fromBytes32(raw.serialNumber),
-    quantity:      Number(raw.quantity),
-    productTypeId: Number(raw.productTypeId),
-    category:      categoryIndex,
-    categoryLabel: CATEGORIES[categoryIndex],
-    status:        statusIndex,
-    statusLabel:   STATUSES[statusIndex],
-    statusColor:   STATUS_COLORS[STATUSES[statusIndex]],
-    origin:        fromBytes32(raw.origin),
-    unitId:        Number(raw.unitId),
-    producer:      raw.producer,
-    currentHolder: raw.currentHolder,
-    certified:     raw.certified,
-    recalled:      raw.recalled,
-    creationDate:  Number(raw.creationDate),
-    expiryDate:    expiry > 0 ? expiry : null,
+    serialNumber:     fromBytes32(raw.serialNumber),
+    quantity:         Number(raw.quantity),
+    productTypeId:    productTypeIndex,
+    productTypeLabel: productTypes[productTypeIndex] ?? null,
+    category:         categoryIndex,
+    categoryLabel:    CATEGORIES[categoryIndex],
+    status:           statusIndex,
+    statusLabel:      STATUSES[statusIndex],
+    statusColor:      STATUS_COLORS[STATUSES[statusIndex]],
+    origin:           fromBytes32(raw.origin),
+    unitId:           unitIndex,
+    unitLabel:        units[unitIndex] ?? null,
+    producer:         raw.producer,
+    currentHolder:    raw.currentHolder,
+    certified:        raw.certified,
+    recalled:         raw.recalled,
+    creationDate:     Number(raw.creationDate),
+    expiryDate:       expiry > 0 ? expiry : null,
   }
 }
 
@@ -76,32 +82,51 @@ export function useBatches() {
 
   // ── Reads ────────────────────────────────────────────────────────────────
 
+  // The product-type / unit registries, fetched once per list load (not per
+  // batch) so decodeBatch can resolve ids to labels.
+  async function fetchRegistries() {
+    const [productTypes, units] = await Promise.all([
+      wallet.contract.getProductTypes(),
+      wallet.contract.getUnits(),
+    ])
+    return { productTypes, units }
+  }
+
   async function fetchBatch(serial) {
-    const raw = await wallet.contract.getBatch(toBytes32(serial))
-    return decodeBatch(raw)
+    const [raw, { productTypes, units }] = await Promise.all([
+      wallet.contract.getBatch(toBytes32(serial)),
+      fetchRegistries(),
+    ])
+    return decodeBatch(raw, productTypes, units)
   }
 
   // Batches created by the connected account
   async function fetchMyBatches() {
-    const events = await wallet.contract.queryFilter(
-      wallet.contract.filters.BatchCreated(null, wallet.account)
-    )
+    const [events, { productTypes, units }] = await Promise.all([
+      wallet.contract.queryFilter(
+        wallet.contract.filters.BatchCreated(null, wallet.account)
+      ),
+      fetchRegistries(),
+    ])
     const serials = [...new Set(events.map(e => e.args.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
-      return decodeBatch(raw)
+      return decodeBatch(raw, productTypes, units)
     }))
   }
 
   // All batches ever created (for auditor view)
   async function fetchAllBatches() {
-    const events = await wallet.contract.queryFilter(
-      wallet.contract.filters.BatchCreated()
-    )
+    const [events, { productTypes, units }] = await Promise.all([
+      wallet.contract.queryFilter(
+        wallet.contract.filters.BatchCreated()
+      ),
+      fetchRegistries(),
+    ])
     const serials = [...new Set(events.map(e => e.args.serialNumber))]
     return Promise.all(serials.map(async (s) => {
       const raw = await wallet.contract.getBatch(s)
-      return decodeBatch(raw)
+      return decodeBatch(raw, productTypes, units)
     }))
   }
 
