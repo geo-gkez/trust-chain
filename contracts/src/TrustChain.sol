@@ -350,7 +350,10 @@ contract TrustChain is ITrustChain {
         if (b.serialNumber == bytes32(0)) revert BatchNotFound();
     }
 
-    /// @dev Overload for callers that already hold the storage reference.
+    /// @dev Core status-transition routine. Validates the move against
+    /// `allowedTransitions` (enforcing expiry except on reverse-logistics paths),
+    /// updates state, clears any pending custody offer, and emits BatchTransitioned.
+    /// Callers pass the already-loaded storage ref from `_requireBatch`.
     function _transition(Batch storage b, bytes32 serialNumber, Status to, bytes32 location) internal {
         // Expiry blocks forward commerce only. Any transition that is part of reverse
         // logistics (currently in RECALLED, or heading to RECALLED / DISPOSED) must
