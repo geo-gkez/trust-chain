@@ -58,7 +58,7 @@ forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
 ## Testing
 
 ```shell
-# Run all 106 tests (unit + fuzz + invariant + e2e)
+# Run all 122 tests (unit + fuzz + invariant + e2e)
 forge test
 
 # Show test names as they run

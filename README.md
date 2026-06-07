@@ -5,7 +5,7 @@
 ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)
 ![Vuetify](https://img.shields.io/badge/Vuetify-4.0-1867C0?logo=vuetify&logoColor=white)
 ![ethers.js](https://img.shields.io/badge/ethers.js-v6-3C3C3D)
-![Tests](https://img.shields.io/badge/tests-106%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 TrustChain is a blockchain-based supply chain tracking system built on Ethereum. It records every step a product batch takes — from production through storage, transport, and distribution to the end consumer — in an immutable on-chain audit trail.
@@ -108,18 +108,18 @@ The deploy script seeds the contract with:
 
 ```bash
 cd contracts
-forge test        # run all 106 tests
+forge test        # run all 122 tests
 forge test -vv    # verbose output with logs
 forge coverage    # coverage report
 ```
 
 | Suite | Count | What it covers |
 |-------|-------|----------------|
-| Unit | 84 | Happy paths, error cases, access control for every function |
+| Unit | 114 | Happy paths, error cases, access control for every function |
 | Fuzz | 3 | Randomised inputs over serial numbers, expiry dates, quantities |
 | Invariant | 3 | Immutable properties across 128 000 random call sequences |
 | E2E | 2 | Full forward chain + recall/reverse logistics workflows |
-| **Total** | **106** | |
+| **Total** | **122** | |
 
 ---
 
