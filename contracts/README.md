@@ -23,7 +23,8 @@ contracts/
 │   ├── TrustChain.invariant.t.sol # invariant tests
 │   └── TrustChain.e2e.t.sol       # end-to-end workflow tests
 ├── script/
-│   └── Deploy.s.sol        # deploys contract + seeds 10 batches and 2 complete routes
+│   ├── Deploy.s.sol               # local Anvil: deploys + seeds 10 batches and 2 complete routes
+│   └── DeploySepoliaMinimal.s.sol # Sepolia: deploys + seeds registries only (no demo users)
 └── foundry.toml
 ```
 

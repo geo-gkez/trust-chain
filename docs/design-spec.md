@@ -476,12 +476,24 @@ App.vue
 **`useUserRole.js`** — fetches and decodes user role from contract on each account change.
 Exports `role`, `roleLabel`, `isLoading`, `fetchRole()`.
 
-**`useBatches.js`** — all batch contract interactions:
-- `createBatch(params)` — calls contract, awaits receipt
-- `receiveBatch(serial, location)` / `shipBatch` / `distributeBatch` / `recallBatch` / `certifyBatch` / `disposeBatch`
-- `fetchBatch(serial)` — reads Batch struct by serial number
-- `fetchBatchTimeline(serial)` — queries `BatchCreated` + all `BatchTransitioned` events for full timeline
-- `fetchMyBatches()` — role-filtered event queries (e.g. PRODUCER queries BatchCreated where producer==me)
+**`useBatches.js`** — batch reads and writes. *Writes* call the contract through ethers
+and await the receipt; *reads* query the Goldsky subgraph (see **Data reads** below) and
+then read any live field back from the contract for authority:
+- writes: `createBatch` · `receiveBatch` / `shipBatch` / `distributeBatch` / `recallBatch` / `disposeBatch` / `certifyBatch`
+- custody handshake (two-phase): `proposeCustody` / `acceptCustody` / `cancelCustody` / `declineCustody`
+- `fetchBatch(serial)` — reads the `Batch` struct directly from the contract
+- `fetchMyBatches()` / `fetchAllBatches()` — subgraph `batchCreateds` → `getBatch` per serial
+- `fetchPendingCustody()` / `fetchOutgoingCustody()` — subgraph `custodyProposeds`, each confirmed still live via the `pendingHolder` getter
+- `fetchBatchTimeline(serial)` — one subgraph query across all batch + custody events (`BatchCreated`, `BatchTransitioned`, `CustodyProposed/Cancelled/Declined/Transferred`, `BatchCertified`)
+
+### Data reads — Goldsky subgraph
+
+On a testnet deployment the UI does **not** scan events from the RPC. A Goldsky
+[Instant Subgraph](https://goldsky.com/) indexes the contract's events and exposes them
+over GraphQL (`ui/src/utils/graphql.js`, endpoint `VITE_SUBGRAPH_URL`). The read helpers
+use the subgraph to discover *which* serials are relevant, then read mutable state
+(`getBatch`, `pendingHolder`) from the contract so values are always authoritative —
+the subgraph is an index, never the source of truth.
 
 **`useAdmin.js`** — admin + registry interactions:
 - `registerUser(address, name, role)` / `deactivateUser` / `activateUser`
@@ -498,7 +510,7 @@ actions: connect(), disconnect()
 
 `connect()` flow:
 1. `eth_requestAccounts` — prompt MetaMask
-2. Switch to Anvil chain (chainId 31337) — add chain if not known
+2. Switch to the configured chain (`VITE_CHAIN_ID` — e.g. Anvil 31337 or Sepolia 0xaa36a7) — add chain if not known
 3. `BrowserProvider → getSigner() → new Contract(address, ABI, signer)`
 4. Register `accountsChanged` + `chainChanged` listeners
 5. Store contract as `markRaw()` (prevent Pinia reactivity overhead)
@@ -589,4 +601,10 @@ PHARMA-GR-001: PRODUCED
 
 ## 12. Deployment
 
-See [deployment.md](deployment.md) for local (Anvil) and Sepolia testnet deployment instructions.
+A testnet deployment is three coordinated artifacts: the **contract**
+(`DeploySepoliaMinimal.s.sol`), a **Goldsky subgraph** indexing it from its deploy block,
+and the **frontend** configured with `VITE_CONTRACT_ADDRESS` + `VITE_SUBGRAPH_URL`. Local
+Anvil development uses `Deploy.s.sol` (with seeded demo users) instead.
+
+See [deployment.md](deployment.md) for the full local (Anvil) and Sepolia testnet
+deployment instructions, including subgraph setup.

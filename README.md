@@ -5,7 +5,7 @@
 ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)
 ![Vuetify](https://img.shields.io/badge/Vuetify-4.0-1867C0?logo=vuetify&logoColor=white)
 ![ethers.js](https://img.shields.io/badge/ethers.js-v6-3C3C3D)
-![Tests](https://img.shields.io/badge/tests-106%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 TrustChain is a blockchain-based supply chain tracking system built on Ethereum. It records every step a product batch takes — from production through storage, transport, and distribution to the end consumer — in an immutable on-chain audit trail.
@@ -21,18 +21,17 @@ The system uses a Solidity smart contract as the single source of truth. Every c
 │       Vue 3 + Vuetify 4  (ui/)          │
 │  Views: Home · Dashboard · Search ·     │
 │         BatchDetail                     │
-└──────────────────┬──────────────────────┘
-                   │ ethers.js v6
-                   │ (reads ABI from Foundry build output)
-┌──────────────────▼──────────────────────┐
-│  MetaMask  (browser wallet / signer)    │
-└──────────────────┬──────────────────────┘
-                   │ JSON-RPC
-        ┌──────────▼──────────┐
-        │  Anvil (local dev)  │  or  Sepolia testnet
-        │  http://127.0.0.1   │
-        │        :8545        │
-        └──────────┬──────────┘
+└───────┬─────────────────────────┬───────┘
+        │ writes (ethers.js v6)   │ reads (GraphQL)
+        │ ABI from Foundry output │ lists · history
+┌───────▼──────────────┐   ┌──────▼───────────────────┐
+│ MetaMask (signer)    │   │ Goldsky subgraph         │
+└───────┬──────────────┘   │ (indexes contract events)│
+        │ JSON-RPC         └──────▲───────────────────┘
+        │                         │ indexes
+┌───────▼─────────────────────────┴────────┐
+│  Sepolia testnet  (or local Anvil)        │
+└──────────────────┬────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
 │  TrustChain.sol  (contracts/src/)        │
@@ -40,6 +39,11 @@ The system uses a Solidity smart contract as the single source of truth. Every c
 │  Foundry · Solidity 0.8.28              │
 └─────────────────────────────────────────┘
 ```
+
+The frontend **writes** through MetaMask/ethers directly to the contract, but **reads**
+batch lists and history from a [Goldsky](https://goldsky.com/) subgraph that indexes the
+contract's events — keeping list/timeline queries fast and off the RPC. See
+[docs/deployment.md](docs/deployment.md) for deploying the contract and its subgraph.
 
 ---
 

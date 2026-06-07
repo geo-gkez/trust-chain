@@ -97,6 +97,7 @@ Create a `ui/.env` file:
 
 ```env
 VITE_CONTRACT_ADDRESS=0x<deployed-contract-address>
+VITE_SUBGRAPH_URL=https://api.goldsky.com/api/public/<project>/subgraphs/<name>/<version>/gn
 
 # Optional — defaults to Anvil local settings
 VITE_CHAIN_ID=0x7a69          # 31337 for Anvil, 0xaa36a7 for Sepolia
@@ -104,9 +105,15 @@ VITE_CHAIN_NAME=Anvil Local
 VITE_RPC_URL=http://127.0.0.1:8545
 ```
 
-`VITE_CONTRACT_ADDRESS` is the only required variable. The others fall back to Anvil defaults if omitted.
+`VITE_CONTRACT_ADDRESS` and `VITE_SUBGRAPH_URL` are **both required**. The UI sends
+*writes* to the contract (via ethers) but reads *lists and history* from a Goldsky
+subgraph (`src/utils/graphql.js`), so without `VITE_SUBGRAPH_URL` the dashboard and
+batch timelines come up empty. The remaining `VITE_*` variables fall back to Anvil
+defaults if omitted.
 
-The contract address is printed at the end of `forge script script/Deploy.s.sol --broadcast`.
+The contract address is printed at the end of the deploy script; the subgraph URL is
+the query endpoint Goldsky gives you after the subgraph finishes indexing. See
+[docs/deployment.md](../docs/deployment.md) for both.
 
 ---
 
